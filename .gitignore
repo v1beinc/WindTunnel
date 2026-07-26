@@ -1,0 +1,65 @@
+# Dependencies
+/node_modules/
+/.pnp/
+.pnp.*
+.yarn/*
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/versions/
+
+# Next.js and production output
+/.next/
+/out/
+/build/
+
+# Tests and reports
+/coverage/
+/test-results/
+/playwright-report/
+/.playwright/
+
+# Environment files and secrets
+.env*
+!.env.example
+*.pem
+*.key
+
+# Vercel
+/.vercel/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Debug and local runtime logs
+*.log
+.next-dev.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local 3D imports. Add licensed production assets explicitly with git add -f.
+*.glb
+*.gltf
+
+# Local design research and generated screenshots
+/audit/
+/design-qa.md
+/implementation-screenshot.png
+
+# Agent-specific workspace context
+/AGENTS.md
+/CLAUDE.md
+/.codex/
+/.agents/
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+Desktop.ini
+/.idea/
+/.vscode/
+*.swp
+*.swo

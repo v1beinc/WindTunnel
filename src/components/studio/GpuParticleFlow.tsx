@@ -102,6 +102,8 @@ type GpuRuntime = {
   velocityVariable: Variable;
 };
 
+type GpuStatus = "initializing" | "ready" | "error" | "context-lost" | "unsupported";
+
 export function GpuParticleFlow({
   object,
   yaw,
@@ -118,8 +120,9 @@ export function GpuParticleFlow({
   const renderMaterial = useRef<THREE.ShaderMaterial>(null);
   const accumulator = useRef(0);
   const cycle = useRef(0);
-  const [gpuReady, setGpuReady] = useState(false);
-  const [gpuError, setGpuError] = useState<string | null>(supported ? null : "WebGL2 or vertex textures not supported");
+  const initAttempted = useRef(false);
+  const contextLost = useRef(false);
+  const [gpuStatus, setGpuStatus] = useState<GpuStatus>(supported ? "initializing" : "unsupported");
 
   const geometry = useMemo(() => {
     const positions = new Float32Array(PARTICLE_COUNT * 2 * 3);
@@ -150,7 +153,32 @@ export function GpuParticleFlow({
   }), []);
 
   useEffect(() => {
-    if (!supported) return;
+    if (!supported) {
+      queueMicrotask(() => setGpuStatus("unsupported"));
+      return;
+    }
+
+    if (initAttempted.current) {
+      return;
+    }
+    initAttempted.current = true;
+
+    const canvas = gl.domElement;
+
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      contextLost.current = true;
+      setGpuStatus("context-lost");
+    };
+
+    const handleContextRestored = () => {
+      contextLost.current = false;
+      initAttempted.current = false;
+      setGpuStatus("initializing");
+    };
+
+    canvas.addEventListener("webglcontextlost", handleContextLost);
+    canvas.addEventListener("webglcontextrestored", handleContextRestored);
 
     const compute = new GPUComputationRenderer(COMPUTE_SIZE, COMPUTE_SIZE, gl);
     const initialPosition = compute.createTexture();
@@ -194,21 +222,27 @@ export function GpuParticleFlow({
     const error = compute.init();
     if (error) {
       console.warn(`GPU flow fallback: ${error}`);
-      queueMicrotask(() => setGpuError(`GPU initialization failed: ${error}`));
+      queueMicrotask(() => setGpuStatus("error"));
       compute.dispose();
       return;
     }
 
-    queueMicrotask(() => {
-      setGpuReady(true);
-      setGpuError(null);
-    });
     runtime.current = { compute, positionVariable, velocityVariable };
+    queueMicrotask(() => setGpuStatus("ready"));
+
+    function cleanup() {
+      if (runtime.current) {
+        runtime.current.compute.dispose();
+        runtime.current = null;
+      }
+      accumulator.current = 0;
+      cycle.current = 0;
+    }
 
     return () => {
-      setGpuReady(false);
-      runtime.current = null;
-      compute.dispose();
+      canvas.removeEventListener("webglcontextlost", handleContextLost);
+      canvas.removeEventListener("webglcontextrestored", handleContextRestored);
+      cleanup();
     };
   }, [gl, supported]);
 
@@ -217,6 +251,9 @@ export function GpuParticleFlow({
   }, [geometry]);
 
   useFrame((state, delta) => {
+    if (gpuStatus !== "ready") return;
+    if (contextLost.current) return;
+
     const current = runtime.current;
     const currentMaterial = renderMaterial.current;
     if (!current || !currentMaterial) return;
@@ -266,9 +303,13 @@ export function GpuParticleFlow({
     currentMaterial.uniforms.textureVelocity.value = current.compute.getCurrentRenderTarget(current.velocityVariable).texture;
   });
 
-  if (!supported || gpuError) return fallback;
+  if (!supported || gpuStatus === "unsupported" || gpuStatus === "error" || gpuStatus === "context-lost") {
+    return fallback;
+  }
 
-  if (!gpuReady) return null;
+  if (gpuStatus !== "ready") {
+    return null;
+  }
 
   return (
     <lineSegments geometry={geometry} visible={enabled} frustumCulled={false}>

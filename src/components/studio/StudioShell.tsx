@@ -224,10 +224,10 @@ export function StudioShell() {
             <div className="brand-mark" aria-hidden="true"><Wind size={17} /></div>
             <div>
               <div className="brand-name">WINDTUNNEL</div>
-              <div className="brand-subtitle">aerodynamic lab / v1.2</div>
+              <div className="brand-subtitle">aerodynamic lab / v1.3</div>
             </div>
           </div>
-          <div className="topbar-center"><span className={`live-dot${running ? "" : " is-paused"}`} /> {running ? "live collision-aware simulation" : "simulation paused"}</div>
+          <div className="topbar-center"><span className={`live-dot${running ? "" : " is-paused"}`} /> {running ? "live GPU SDF simulation" : "simulation paused"}</div>
           <div className="topbar-actions">
             <span className="status-chip"><span className="live-dot" /> guest session</span>
             <button className="subtle-button" type="button" onClick={() => setUnit(unit === "metric" ? "imperial" : "metric")}>
@@ -237,7 +237,7 @@ export function StudioShell() {
             {showHelp && (
               <div className="help-popover" role="dialog" aria-label="About the flow model">
                 <strong>Interactive reduced-order wind tunnel</strong>
-                <span>Choose one diagnostic view at a time. Particle tracers, streamlines, pressure and velocity vectors sample the same collision-aware analytical field.</span>
+                <span>GPU particle advection uses a fixed 120 Hz solver and an SDF collision model for the car body, cabin and rear wing. Other views sample the matching reduced-order CPU field.</span>
               </div>
             )}
           </div>
@@ -300,7 +300,7 @@ export function StudioShell() {
               <div className="secondary-toggle">
                 <Toggle icon={Waves} label="Turbulent wake" active={overlays.wake} onClick={() => setOverlay("wake")} />
               </div>
-              <div className="solver-note"><span className="live-dot" /> {FLOW_MODE_LABELS[flowMode]} active</div>
+              <div className="solver-note"><span className="live-dot" /> {flowMode === "particles" ? "GPU advection · 16.4K tracers · 120 Hz" : `${FLOW_MODE_LABELS[flowMode]} active`}</div>
             </div>
           </aside>
 

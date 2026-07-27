@@ -5,6 +5,8 @@ import {
   getFlowCoordinates,
   projectPointOutsideBody,
   sampleFlowField,
+  sampleObjectNormal,
+  sampleObjectSdf,
 } from "@/lib/physics/flowField";
 
 const car = MODEL_CATALOG[0];
@@ -26,12 +28,25 @@ describe("analytical flow field", () => {
   it("projects particles out of the collision envelope", () => {
     const envelope = createFlowEnvelope(car, 0);
     const projected = projectPointOutsideBody({ x: 0, y: envelope.centerY, z: 0 }, car, 0, 0);
-    const radialDistance = Math.sqrt(
-      (projected.z / envelope.halfWidth) ** 2
-      + ((projected.y - envelope.centerY) / envelope.halfHeight) ** 2,
-    );
 
-    expect(radialDistance).toBeGreaterThan(1);
+    expect(sampleObjectSdf(projected, car)).toBeGreaterThan(0.015);
+  });
+
+  it("uses separate signed-distance volumes for the body and rear wing", () => {
+    expect(sampleObjectSdf({ x: 0, y: 0.66, z: 0 }, car)).toBeLessThan(0);
+    expect(sampleObjectSdf({ x: 1.55, y: 1.43, z: 0.84 }, car, 12)).toBeLessThan(0);
+    expect(sampleObjectSdf({ x: 0, y: 3.2, z: 0 }, car)).toBeGreaterThan(1);
+  });
+
+  it("removes inward velocity at the nose surface", () => {
+    const point = { x: -2.31, y: 0.68, z: 0.08 };
+    const sample = sampleFlowField(point, car, 0, 0, 0.3);
+    const normal = sampleObjectNormal(point, car);
+    const normalVelocity = sample.velocity.x * normal.x
+      + sample.velocity.y * normal.y
+      + sample.velocity.z * normal.z;
+
+    expect(normalVelocity).toBeGreaterThanOrEqual(-0.02);
   });
 
   it("slows the stream in the wake", () => {

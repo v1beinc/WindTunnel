@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Line, OrbitControls, PerspectiveCamera, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { GpuParticleFlow } from "@/components/studio/GpuParticleFlow";
 import { SportsCarModel } from "@/components/studio/SportsCarModel";
 import type { ObjectSpec, SimulationMetrics } from "@/lib/physics/aerodynamics";
 import {
@@ -44,19 +45,15 @@ type ModelErrorBoundaryState = {
   error: string | null;
 };
 
-const STREAMLINE_SEEDS: StreamlineSeed[] = [
-  { lateral: -0.34, height: 0.18, phase: 0.2 },
-  { lateral: 0.22, height: 0.38, phase: 0.8 },
-  { lateral: -0.28, height: 0.58, phase: 1.4 },
-  { lateral: 0.31, height: 0.78, phase: 2.1 },
-  { lateral: -0.2, height: 0.98, phase: 2.7 },
-  { lateral: 0.24, height: 1.2, phase: 3.2 },
-  { lateral: -0.3, height: 1.44, phase: 3.8 },
-  { lateral: 0.18, height: 1.7, phase: 4.4 },
-  { lateral: -0.22, height: 1.98, phase: 5.1 },
-  { lateral: 0.29, height: 2.28, phase: 5.6 },
-  { lateral: -0.18, height: 2.62, phase: 6.1 },
-];
+const STREAMLINE_SEEDS: StreamlineSeed[] = Array.from({ length: 54 }, (_, index) => {
+  const lane = Math.floor(index / 9);
+  const layer = index % 9;
+  return {
+    lateral: -2.35 + lane * 0.94,
+    height: 0.16 + layer * 0.31,
+    phase: 0.2 + index * 0.47,
+  };
+});
 
 const RIBBON_SEEDS: StreamlineSeed[] = [
   { lateral: -0.42, height: 0.2, phase: 0.3 },
@@ -201,7 +198,7 @@ function assignFlowColor(colors: Float32Array, cursor: number, wake: number, sta
   colors[cursor + 2] = blue;
 }
 
-function ParticleFlow({ object, yaw, speed, enabled, running, turbulenceStrength }: {
+function CpuParticleFlow({ object, yaw, speed, enabled, running, turbulenceStrength }: {
   object: ObjectSpec;
   yaw: number;
   speed: number;
@@ -220,7 +217,7 @@ function ParticleFlow({ object, yaw, speed, enabled, running, turbulenceStrength
     const phases = new Float32Array(count);
     for (let index = 0; index < count; index += 1) {
       const streamwise = -7.1 + pseudoRandom(index + 1) * 14.2;
-      const lateral = -0.2 + pseudoRandom(index + 101) * 0.4;
+      const lateral = -3.2 + pseudoRandom(index + 101) * 6.4;
       const height = 0.08 + pseudoRandom(index + 201) * 3.05;
       const point = createFlowPoint(streamwise, lateral, height, yaw);
       particles.set([point.x, point.y, point.z], index * 3);
@@ -234,7 +231,7 @@ function ParticleFlow({ object, yaw, speed, enabled, running, turbulenceStrength
   useFrame((state, delta) => {
     if (!lines.current || !points.current || !enabled || !running) return;
     const movementSpeed = speed <= 0.01 ? 0 : 0.72 + Math.min(speed / 22, 3.15);
-    const frameDelta = Math.min(delta, 1 / 30);
+    const frameDelta = Math.min(delta, 0.08);
     const elapsed = state.clock.elapsedTime;
 
     for (let index = 0; index < particleData.count; index += 1) {
@@ -259,7 +256,7 @@ function ParticleFlow({ object, yaw, speed, enabled, running, turbulenceStrength
         || next.y < 0.055
         || next.y > 3.25
       ) {
-        const resetLateral = -0.2 + pseudoRandom(index + 401) * 0.4;
+        const resetLateral = -3.2 + pseudoRandom(index + 401) * 6.4;
         const resetHeight = 0.08 + pseudoRandom(index + 501) * 3.02;
         next = createFlowPoint(-7.15, resetLateral, resetHeight, yaw);
       }
@@ -310,23 +307,28 @@ function ParticleFlow({ object, yaw, speed, enabled, running, turbulenceStrength
   );
 }
 
-function Streamlines({ object, yaw, enabled }: { object: ObjectSpec; yaw: number; enabled: boolean }) {
+function Streamlines({ object, yaw, spoilerAngleDeg, enabled }: {
+  object: ObjectSpec;
+  yaw: number;
+  spoilerAngleDeg: number;
+  enabled: boolean;
+}) {
   const geometry = useMemo(() => {
     const positions: number[] = [];
     const colors: number[] = [];
     for (const seed of STREAMLINE_SEEDS) {
-      const points = createStreamline(object, yaw, seed);
+      const points = createStreamline(object, yaw, seed, 92, 0.16, spoilerAngleDeg);
       for (let index = 0; index < points.length - 1; index += 1) {
         const first = points[index];
         const second = points[index + 1];
         positions.push(first.x, first.y, first.z, second.x, second.y, second.z);
-        const sample = sampleFlowField(first, object, yaw, 0, seed.phase);
+        const sample = sampleFlowField(first, object, yaw, 0, seed.phase, 1, spoilerAngleDeg);
         const color = sample.wakeIntensity > 0.22 ? [0.46, 0.38, 0.72] : [0.31, 0.58, 0.61];
         colors.push(...color, ...color);
       }
     }
     return { positions: new Float32Array(positions), colors: new Float32Array(colors) };
-  }, [object, yaw]);
+  }, [object, spoilerAngleDeg, yaw]);
 
   return (
     <lineSegments visible={enabled}>
@@ -339,11 +341,16 @@ function Streamlines({ object, yaw, enabled }: { object: ObjectSpec; yaw: number
   );
 }
 
-function SmokeRibbons({ object, yaw, enabled }: { object: ObjectSpec; yaw: number; enabled: boolean }) {
+function SmokeRibbons({ object, yaw, spoilerAngleDeg, enabled }: {
+  object: ObjectSpec;
+  yaw: number;
+  spoilerAngleDeg: number;
+  enabled: boolean;
+}) {
   const ribbons = useMemo(() => RIBBON_SEEDS.map((seed) => ({
     id: `${seed.lateral}-${seed.height}-${seed.phase}`,
-    points: createStreamline(object, yaw, seed, 92, 0.165).map((point) => [point.x, point.y, point.z] as [number, number, number]),
-  })), [object, yaw]);
+    points: createStreamline(object, yaw, seed, 96, 0.16, spoilerAngleDeg).map((point) => [point.x, point.y, point.z] as [number, number, number]),
+  })), [object, spoilerAngleDeg, yaw]);
 
   return (
     <group visible={enabled}>
@@ -354,49 +361,6 @@ function SmokeRibbons({ object, yaw, enabled }: { object: ObjectSpec; yaw: numbe
           <Line points={ribbon.points} color="#f0f7f4" lineWidth={1.15} transparent opacity={0.42} depthWrite={false} />
         </group>
       ))}
-    </group>
-  );
-}
-
-function WakeVortices({ object, yaw, enabled, running }: {
-  object: ObjectSpec;
-  yaw: number;
-  enabled: boolean;
-  running: boolean;
-}) {
-  const vortexGroup = useRef<THREE.Group>(null);
-  const envelope = useMemo(() => createFlowEnvelope(object, yaw), [object, yaw]);
-
-  useFrame((_, delta) => {
-    if (!vortexGroup.current || !enabled || !running) return;
-    vortexGroup.current.rotation.x += delta * 0.42;
-  });
-
-  return (
-    <group visible={enabled} position={[0, envelope.centerY, 0]} rotation={[0, -envelope.yawRadians, 0]}>
-      <group ref={vortexGroup}>
-        {[0, 1, 2, 3, 4].map((index) => {
-          const distance = 0.65 + index * 0.82;
-          const radius = envelope.halfWidth * (0.72 + index * 0.1);
-          return (
-            <mesh
-              key={distance}
-              position={[envelope.halfLength + distance, 0, 0]}
-              rotation={[0, Math.PI / 2, index * 0.48]}
-              scale={[1, envelope.halfHeight / envelope.halfWidth, 1]}
-            >
-              <torusGeometry args={[radius, 0.018, 6, 42]} />
-              <meshBasicMaterial
-                color={index % 2 === 0 ? "#8b72c9" : "#65b8b2"}
-                transparent
-                opacity={0.22 - index * 0.025}
-                depthWrite={false}
-                blending={THREE.AdditiveBlending}
-              />
-            </mesh>
-          );
-        })}
-      </group>
     </group>
   );
 }
@@ -599,22 +563,30 @@ function SceneContent({
       <TunnelShell />
       {flowMode === "streamlines" && (
         <>
-          <SmokeRibbons object={flowObject} yaw={yawAngleDeg} enabled />
-          <Streamlines object={flowObject} yaw={yawAngleDeg} enabled />
+          <SmokeRibbons object={flowObject} yaw={yawAngleDeg} spoilerAngleDeg={spoilerAngleDeg} enabled />
+          <Streamlines object={flowObject} yaw={yawAngleDeg} spoilerAngleDeg={spoilerAngleDeg} enabled />
         </>
       )}
       {flowMode === "particles" && (
-        <ParticleFlow
+        <GpuParticleFlow
           object={flowObject}
           yaw={yawAngleDeg}
           speed={metrics.effectiveWindSpeedMps}
+          spoilerAngleDeg={spoilerAngleDeg}
           enabled
           running={running}
           turbulenceStrength={overlays.wake ? 1 : 0}
+          fallback={(
+            <CpuParticleFlow
+              object={flowObject}
+              yaw={yawAngleDeg}
+              speed={metrics.effectiveWindSpeedMps}
+              enabled
+              running={running}
+              turbulenceStrength={overlays.wake ? 1 : 0}
+            />
+          )}
         />
-      )}
-      {overlays.wake && (flowMode === "particles" || flowMode === "streamlines") && (
-        <WakeVortices object={flowObject} yaw={yawAngleDeg} enabled running={running} />
       )}
       {flowMode === "pressure" && (
         <PressureField object={flowObject} yaw={yawAngleDeg} intensity={intensity} enabled />
@@ -632,7 +604,7 @@ function SceneContent({
           )}
         </Suspense>
       </ModelErrorBoundary>
-      <ContactShadows position={[0, 0.02, 0]} opacity={0.42} scale={8} blur={2.8} far={5} />
+      <ContactShadows position={[0, 0.02, 0]} opacity={0.42} scale={8} blur={2.8} far={5} frames={1} />
       <OrbitControls makeDefault enablePan={false} minDistance={4.8} maxDistance={12} target={[0, 0.8, 0]} />
     </>
   );
@@ -644,7 +616,7 @@ export function SceneCanvas(props: SceneCanvasProps) {
     : [7.2, 4.2, 6.7];
 
   return (
-    <Canvas className="scene-canvas" shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
+    <Canvas className="scene-canvas" shadows="basic" dpr={[1, 1.45]} gl={{ antialias: true, powerPreference: "high-performance" }}>
       <PerspectiveCamera key={props.cameraPreset} makeDefault position={cameraPosition} fov={props.cameraPreset === "side" ? 35 : 38} />
       <SceneContent {...props} />
     </Canvas>

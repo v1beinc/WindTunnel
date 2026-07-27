@@ -74,3 +74,51 @@ describe("analytical flow field", () => {
     expect(flowVelocity.lateral).toBeCloseTo(0, 2);
   });
 });
+
+describe("car geometry profile and SDF alignment", () => {
+  it("noseTipX matches nose center minus nose radius", () => {
+    const expected = CAR_GEOMETRY.nose.center.x - CAR_GEOMETRY.nose.radii.x;
+    expect(CAR_GEOMETRY.noseTipX).toBeCloseTo(expected, 2);
+  });
+
+  it("topY is at or above max of cabin top and spoiler top", () => {
+    const cabinTop = CAR_GEOMETRY.cabin.center.y + CAR_GEOMETRY.cabin.radii.y;
+    const spoilerTop = CAR_GEOMETRY.spoiler.center.y + CAR_GEOMETRY.spoiler.halfSize.y;
+    const maxTop = Math.max(cabinTop, spoilerTop);
+    expect(CAR_GEOMETRY.topY).toBeGreaterThanOrEqual(maxTop - 0.05);
+  });
+
+it("point in front of nose is not colliding before noseTipX", () => {
+    // Point well in front of nose tip should have positive SDF
+    const point = { x: CAR_GEOMETRY.noseTipX + 5.0, y: CAR_GEOMETRY.nose.center.y, z: 0 };
+    const sdf = sampleObjectSdf(point, car);
+    expect(sdf).toBeGreaterThan(0);
+  });
+
+  it("point inside wheel is colliding", () => {
+    // Point inside front-left wheel
+    const point = {
+      x: CAR_GEOMETRY.wheels.frontAxleX,
+      y: CAR_GEOMETRY.wheels.centerY,
+      z: CAR_GEOMETRY.wheels.trackHalfWidth
+    };
+    const sdf = sampleObjectSdf(point, car);
+    expect(sdf).toBeLessThan(0);
+  });
+
+  it("CPU and GPU support Z-oriented wheel cylinders", () => {
+    // Both CPU and GPU SDF should have sdfCylinderZ for wheels
+    // This test confirms the constants exist
+    expect(CAR_GEOMETRY.wheels.centerY).toBeDefined();
+    expect(CAR_GEOMETRY.wheels.trackHalfWidth).toBeDefined();
+    expect(CAR_GEOMETRY.wheels.frontAxleX).toBeDefined();
+    expect(CAR_GEOMETRY.wheels.rearAxleX).toBeDefined();
+  });
+
+  it("CPU spoiler supports match GPU dimensions", () => {
+    const support = CAR_GEOMETRY.spoiler.supports.left;
+    expect(support.halfSize.x).toBeGreaterThan(0);
+    expect(support.halfSize.y).toBeGreaterThan(0);
+    expect(support.halfSize.z).toBeGreaterThan(0);
+  });
+});

@@ -97,6 +97,13 @@ float sdCylinder(vec3 p, float radius, float height) {
 }
 `;
 
+export const GLSL_SD_CYLINDER_Z = /* glsl */ `
+float sdCylinderZ(vec3 p, float radius, float height) {
+  vec2 d = vec2(length(p.xy) - radius, abs(p.z) - height * 0.5);
+  return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+`;
+
 export const GLSL_SCENE_SDF_CAR = /* glsl */ `
 float sceneSdfCar(vec3 p, float spoilerAngle) {
   float body = sdEllipsoid(p - vec3(${CAR_BODY_CENTER.x.toFixed(2)}, ${CAR_BODY_CENTER.y.toFixed(2)}, ${CAR_BODY_CENTER.z.toFixed(2)}), vec3(${CAR_BODY_RADII.x.toFixed(2)}, ${CAR_BODY_RADII.y.toFixed(2)}, ${CAR_BODY_RADII.z.toFixed(2)}));
@@ -113,7 +120,7 @@ float sceneSdfCar(vec3 p, float spoilerAngle) {
     sdBox(p - vec3(${CAR_RIGHT_SUPPORT_CENTER.x.toFixed(2)}, ${CAR_RIGHT_SUPPORT_CENTER.y.toFixed(2)}, ${CAR_RIGHT_SUPPORT_CENTER.z.toFixed(2)}), vec3(${CAR_RIGHT_SUPPORT_HALF_SIZE.x.toFixed(2)}, ${CAR_RIGHT_SUPPORT_HALF_SIZE.y.toFixed(2)}, ${CAR_RIGHT_SUPPORT_HALF_SIZE.z.toFixed(2)}))
   );
 
-  // Wheels collision (4 cylinders)
+  // Wheels collision (4 cylinders) - using sdCylinderZ since wheels are rotated PI/2 on X axis
   float wheelR = ${CAR_WHEEL_RADIUS.toFixed(2)};
   float wheelH = ${CAR_WHEEL_WIDTH.toFixed(2)};
   float wheelY = ${CAR_WHEEL_CENTER_Y.toFixed(2)};
@@ -121,10 +128,10 @@ float sceneSdfCar(vec3 p, float spoilerAngle) {
   float rearAxleX = ${CAR_WHEEL_REAR_AXLE_X.toFixed(2)};
   float trackHalf = ${CAR_WHEEL_TRACK_HALF_WIDTH.toFixed(2)};
   float wheels = 1e9;
-  wheels = min(wheels, sdCylinder(p - vec3(frontAxleX, wheelY, trackHalf), wheelR, wheelH));
-  wheels = min(wheels, sdCylinder(p - vec3(frontAxleX, wheelY, -trackHalf), wheelR, wheelH));
-  wheels = min(wheels, sdCylinder(p - vec3(rearAxleX, wheelY, trackHalf), wheelR, wheelH));
-  wheels = min(wheels, sdCylinder(p - vec3(rearAxleX, wheelY, -trackHalf), wheelR, wheelH));
+  wheels = min(wheels, sdCylinderZ(p - vec3(frontAxleX, wheelY, trackHalf), wheelR, wheelH));
+  wheels = min(wheels, sdCylinderZ(p - vec3(frontAxleX, wheelY, -trackHalf), wheelR, wheelH));
+  wheels = min(wheels, sdCylinderZ(p - vec3(rearAxleX, wheelY, trackHalf), wheelR, wheelH));
+  wheels = min(wheels, sdCylinderZ(p - vec3(rearAxleX, wheelY, -trackHalf), wheelR, wheelH));
 
   return min(min(min(min(body, nose), cabin), min(wing, supports)), wheels);
 }

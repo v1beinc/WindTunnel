@@ -8,9 +8,9 @@ type SportsCarModelProps = {
   spoilerAngleDeg: number;
 };
 
-function Wheel({ x, z, radius, width }: { x: number; z: number; radius: number; width: number }) {
+function Wheel({ radius, width }: { radius: number; width: number }) {
   return (
-    <group position={[x, radius - CAR_GEOMETRY.groundClearance, z]} rotation={[Math.PI / 2, 0, 0]}>
+    <group rotation={[Math.PI / 2, 0, 0]}>
       <mesh castShadow receiveShadow>
         <cylinderGeometry args={[radius, radius, width, 32, 1]} />
         <meshStandardMaterial color="#0a0d0f" roughness={0.7} metalness={0.05} />
@@ -27,9 +27,9 @@ function Wheel({ x, z, radius, width }: { x: number; z: number; radius: number; 
   );
 }
 
-function Hubcap({ x, z, radius }: { x: number; z: number; radius: number }) {
+function Hubcap({ radius }: { radius: number }) {
   return (
-    <group position={[x, radius - CAR_GEOMETRY.groundClearance, z]} rotation={[Math.PI / 2, 0, 0]}>
+    <group rotation={[Math.PI / 2, 0, 0]}>
       <mesh>
         <cylinderGeometry args={[radius * 0.55, radius * 0.55, 0.035, 32]} />
         <meshStandardMaterial color="#3a454a" metalness={0.8} roughness={0.25} />
@@ -53,7 +53,7 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
     geo.scale(g.body.radii.x * 2, g.body.radii.y * 2, g.body.radii.z * 2);
     geo.translate(g.body.center.x, g.body.center.y, g.body.center.z);
     return geo;
-  }, []);
+  }, [g.body.center.x, g.body.center.y, g.body.center.z, g.body.radii.x, g.body.radii.y, g.body.radii.z]);
 
   // Nose - front ellipsoid
   const noseGeometry = useMemo(() => {
@@ -61,7 +61,7 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
     geo.scale(g.nose.radii.x * 2, g.nose.radii.y * 2, g.nose.radii.z * 2);
     geo.translate(g.nose.center.x, g.nose.center.y, g.nose.center.z);
     return geo;
-  }, []);
+  }, [g.nose.center.x, g.nose.center.y, g.nose.center.z, g.nose.radii.x, g.nose.radii.y, g.nose.radii.z]);
 
   // Cabin - upper ellipsoid
   const cabinGeometry = useMemo(() => {
@@ -69,7 +69,7 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
     geo.scale(g.cabin.radii.x * 2, g.cabin.radii.y * 2, g.cabin.radii.z * 2);
     geo.translate(g.cabin.center.x, g.cabin.center.y, g.cabin.center.z);
     return geo;
-  }, []);
+  }, [g.cabin.center.x, g.cabin.center.y, g.cabin.center.z, g.cabin.radii.x, g.cabin.radii.y, g.cabin.radii.z]);
 
   // Spoiler
   const spoilerGeometry = useMemo(() => {
@@ -79,9 +79,9 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
       g.spoiler.halfSize.z * 2
     );
     return geo;
-  }, []);
+  }, [g.spoiler.halfSize.x, g.spoiler.halfSize.y, g.spoiler.halfSize.z]);
 
-  // Spoiler supports
+  // Spoiler supports - positioned relative to spoiler center
   const supportGeometry = useMemo(() => {
     const geo = new THREE.BoxGeometry(
       g.spoiler.supports.left.halfSize.x * 2,
@@ -89,11 +89,7 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
       g.spoiler.supports.left.halfSize.z * 2
     );
     return geo;
-  }, []);
-
-  // Wheel geometry
-  const wheelGeometry = useMemo(() => new THREE.CylinderGeometry(w.radius, w.radius, w.width, 32, 1), [w.radius, w.width]);
-  const hubGeometry = useMemo(() => new THREE.CylinderGeometry(w.hubRadius, w.hubRadius, 0.035, 24), [w.hubRadius]);
+  }, [g.spoiler.supports.left.halfSize.x, g.spoiler.supports.left.halfSize.y, g.spoiler.supports.left.halfSize.z]);
 
   return (
     <group position={[0, 0.015, 0]}>
@@ -167,25 +163,34 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
             clearcoatRoughness={0.14}
           />
         </mesh>
-        <mesh geometry={supportGeometry} position={[g.spoiler.supports.left.halfSize.x, g.spoiler.supports.left.halfSize.y, g.spoiler.supports.left.center.z]}>
+        {/* Supports positioned relative to spoiler center */}
+        <mesh geometry={supportGeometry} position={[
+          g.spoiler.supports.left.center.x - g.spoiler.center.x,
+          g.spoiler.supports.left.center.y - g.spoiler.center.y,
+          g.spoiler.supports.left.center.z - g.spoiler.center.z
+        ]}>
           <meshStandardMaterial color="#13191d" metalness={0.74} roughness={0.2} />
         </mesh>
-        <mesh geometry={supportGeometry} position={[g.spoiler.supports.right.halfSize.x, g.spoiler.supports.right.halfSize.y, g.spoiler.supports.right.center.z]}>
+        <mesh geometry={supportGeometry} position={[
+          g.spoiler.supports.right.center.x - g.spoiler.center.x,
+          g.spoiler.supports.right.center.y - g.spoiler.center.y,
+          g.spoiler.supports.right.center.z - g.spoiler.center.z
+        ]}>
           <meshStandardMaterial color="#13191d" metalness={0.74} roughness={0.2} />
         </mesh>
       </group>
 
-      {/* Wheels */}
+      {/* Wheels - parent group handles vertical position, Wheel/Hubcap use local coords */}
       {[-w.trackHalfWidth, w.trackHalfWidth].map((z) => (
-        <group key={`wheel-front-${z}`} position={[w.frontAxleX, w.radius - g.groundClearance, z]}>
-          <Wheel x={0} z={0} radius={w.radius} width={w.width} />
-          <Hubcap x={0} z={0} radius={w.radius} />
+        <group key={`wheel-front-${z}`} position={[w.frontAxleX, w.centerY, z]}>
+          <Wheel radius={w.radius} width={w.width} />
+          <Hubcap radius={w.radius} />
         </group>
       ))}
       {[-w.trackHalfWidth, w.trackHalfWidth].map((z) => (
-        <group key={`wheel-rear-${z}`} position={[w.rearAxleX, w.radius - g.groundClearance, z]}>
-          <Wheel x={0} z={0} radius={w.radius} width={w.width} />
-          <Hubcap x={0} z={0} radius={w.radius} />
+        <group key={`wheel-rear-${z}`} position={[w.rearAxleX, w.centerY, z]}>
+          <Wheel radius={w.radius} width={w.width} />
+          <Hubcap radius={w.radius} />
         </group>
       ))}
 

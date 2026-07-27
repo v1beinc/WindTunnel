@@ -566,36 +566,44 @@ function DebugCollisionEnvelope({ spoilerAngleDeg, enabled }: { spoilerAngleDeg:
           <boxGeometry args={[1, 1, 1]} />
           <meshBasicMaterial color="#e6b45f" transparent opacity={0.2} wireframe />
         </mesh>
-        <mesh position={[g.spoiler.supports.left.halfSize.x, g.spoiler.supports.left.halfSize.y, g.spoiler.supports.left.center.z]} scale={[g.spoiler.supports.left.halfSize.x * 2, g.spoiler.supports.left.halfSize.y * 2, g.spoiler.supports.left.halfSize.z * 2]}>
+        <mesh position={[
+          g.spoiler.supports.left.center.x - g.spoiler.center.x,
+          g.spoiler.supports.left.center.y - g.spoiler.center.y,
+          g.spoiler.supports.left.center.z - g.spoiler.center.z
+        ]} scale={[g.spoiler.supports.left.halfSize.x * 2, g.spoiler.supports.left.halfSize.y * 2, g.spoiler.supports.left.halfSize.z * 2]}>
           <boxGeometry args={[1, 1, 1]} />
           <meshBasicMaterial color="#e6b45f" transparent opacity={0.2} wireframe />
         </mesh>
-        <mesh position={[g.spoiler.supports.right.halfSize.x, g.spoiler.supports.right.halfSize.y, g.spoiler.supports.right.center.z]} scale={[g.spoiler.supports.right.halfSize.x * 2, g.spoiler.supports.right.halfSize.y * 2, g.spoiler.supports.right.halfSize.z * 2]}>
+        <mesh position={[
+          g.spoiler.supports.right.center.x - g.spoiler.center.x,
+          g.spoiler.supports.right.center.y - g.spoiler.center.y,
+          g.spoiler.supports.right.center.z - g.spoiler.center.z
+        ]} scale={[g.spoiler.supports.right.halfSize.x * 2, g.spoiler.supports.right.halfSize.y * 2, g.spoiler.supports.right.halfSize.z * 2]}>
           <boxGeometry args={[1, 1, 1]} />
           <meshBasicMaterial color="#e6b45f" transparent opacity={0.2} wireframe />
         </mesh>
       </group>
 
       {/* Wheels as wireframe cylinders */}
-      <group position={[g.wheels.frontAxleX, g.wheels.radius - g.groundClearance, g.wheels.trackHalfWidth]}>
+      <group position={[g.wheels.frontAxleX, g.wheels.centerY, g.wheels.trackHalfWidth]}>
         <mesh scale={[g.wheels.radius * 2, g.wheels.width, g.wheels.radius * 2]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[1, 1, 1, 16, 1]} />
           <meshBasicMaterial color="#74d4bd" transparent opacity={0.12} wireframe />
         </mesh>
       </group>
-      <group position={[g.wheels.frontAxleX, g.wheels.radius - g.groundClearance, -g.wheels.trackHalfWidth]}>
+      <group position={[g.wheels.frontAxleX, g.wheels.centerY, -g.wheels.trackHalfWidth]}>
         <mesh scale={[g.wheels.radius * 2, g.wheels.width, g.wheels.radius * 2]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[1, 1, 1, 16, 1]} />
           <meshBasicMaterial color="#74d4bd" transparent opacity={0.12} wireframe />
         </mesh>
       </group>
-      <group position={[g.wheels.rearAxleX, g.wheels.radius - g.groundClearance, g.wheels.trackHalfWidth]}>
+      <group position={[g.wheels.rearAxleX, g.wheels.centerY, g.wheels.trackHalfWidth]}>
         <mesh scale={[g.wheels.radius * 2, g.wheels.width, g.wheels.radius * 2]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[1, 1, 1, 16, 1]} />
           <meshBasicMaterial color="#74d4bd" transparent opacity={0.12} wireframe />
         </mesh>
       </group>
-      <group position={[g.wheels.rearAxleX, g.wheels.radius - g.groundClearance, -g.wheels.trackHalfWidth]}>
+      <group position={[g.wheels.rearAxleX, g.wheels.centerY, -g.wheels.trackHalfWidth]}>
         <mesh scale={[g.wheels.radius * 2, g.wheels.width, g.wheels.radius * 2]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[1, 1, 1, 16, 1]} />
           <meshBasicMaterial color="#74d4bd" transparent opacity={0.12} wireframe />

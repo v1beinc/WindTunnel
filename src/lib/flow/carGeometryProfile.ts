@@ -65,8 +65,8 @@ export const CAR_GEOMETRY: CarGeometryProfile = {
   },
 
   nose: {
-    center: { x: -1.8, y: 0.56, z: 0.0 },
-    radii: { x: 0.7, y: 0.32, z: 0.78 },
+    center: { x: -1.9, y: 0.56, z: 0.0 },
+    radii: { x: 0.6, y: 0.32, z: 0.78 },
   },
 
   cabin: {
@@ -90,15 +90,15 @@ export const CAR_GEOMETRY: CarGeometryProfile = {
     rearAxleX: 1.25,
     trackHalfWidth: 0.85,
     hubRadius: 0.22,
-    centerY: 0.26, // radius - groundClearance
+    centerY: 0.26,
   },
 
-  noseTipX: -2.3,
-  tailX: 1.85,
-  topY: 1.35,
+  noseTipX: -2.5,
+  tailX: 1.87,
+  topY: 1.40,
   bottomY: 0.0,
-  leftZ: -0.95,
-  rightZ: 0.95,
+  leftZ: -0.93,
+  rightZ: 0.93,
 };
 
 // Helper to get all primitive definitions for SDF

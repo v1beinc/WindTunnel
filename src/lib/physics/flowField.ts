@@ -138,8 +138,8 @@ function sdfBox(point: FlowPoint, halfSize: FlowPoint) {
     + Math.min(Math.max(q.x, Math.max(q.y, q.z)), 0);
 }
 
-function sdfCylinder(point: FlowPoint, radius: number, halfHeight: number) {
-  const d = { x: Math.hypot(point.x, point.z) - radius, y: Math.abs(point.y) - halfHeight };
+function sdfCylinderZ(point: FlowPoint, radius: number, halfHeight: number) {
+  const d = { x: Math.hypot(point.x, point.y) - radius, y: Math.abs(point.z) - halfHeight };
   return Math.min(Math.max(d.x, d.y), 0) + Math.hypot(Math.max(d.x, 0), Math.max(d.y, 0));
 }
 
@@ -207,10 +207,10 @@ export function sampleObjectSdf(point: FlowPoint, object: ObjectSpec, spoilerAng
     const wheelH = CAR_WHEEL_WIDTH * 0.5;
     const wheelY = CAR_WHEEL_CENTER_Y;
     const wheels = Math.min(
-      sdfCylinder(translated(point, CAR_WHEEL_FRONT_AXLE_X, wheelY, CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH),
-      sdfCylinder(translated(point, CAR_WHEEL_FRONT_AXLE_X, wheelY, -CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH),
-      sdfCylinder(translated(point, CAR_WHEEL_REAR_AXLE_X, wheelY, CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH),
-      sdfCylinder(translated(point, CAR_WHEEL_REAR_AXLE_X, wheelY, -CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH)
+      sdfCylinderZ(translated(point, CAR_WHEEL_FRONT_AXLE_X, wheelY, CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH),
+      sdfCylinderZ(translated(point, CAR_WHEEL_FRONT_AXLE_X, wheelY, -CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH),
+      sdfCylinderZ(translated(point, CAR_WHEEL_REAR_AXLE_X, wheelY, CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH),
+      sdfCylinderZ(translated(point, CAR_WHEEL_REAR_AXLE_X, wheelY, -CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH)
     );
 
     return Math.min(body, nose, cabin, wing, leftSupport, rightSupport, wheels);

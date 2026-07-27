@@ -1,4 +1,69 @@
 import type { ObjectSpec } from "@/lib/physics/aerodynamics";
+import {
+  DEG_TO_RAD,
+  CPU_NORMAL_EPSILON,
+  CAR_BODY_CENTER,
+  CAR_BODY_RADII,
+  CAR_NOSE_CENTER,
+  CAR_NOSE_RADII,
+  CAR_CABIN_CENTER,
+  CAR_CABIN_RADII,
+  CAR_WING_CENTER,
+  CAR_WING_HALF_SIZE,
+  CAR_LEFT_SUPPORT_CENTER,
+  CAR_RIGHT_SUPPORT_CENTER,
+  CAR_SUPPORT_HALF_SIZE,
+  DEFAULT_OBJECT_HALF_SIZE_MIN,
+  DEFAULT_OBJECT_Y_OFFSET,
+  FLOW_INFLUENCE_CLAMP_MIN,
+  FLOW_INFLUENCE_CLAMP_MAX,
+  FLOW_STAGNATION_FACTOR,
+  FLOW_SURFACE_ACCEL_BASE,
+  FLOW_SURFACE_ACCEL_VAR,
+  CPU_REAR_REACH_LENGTH_FACTOR,
+  CPU_REAR_REACH_LENGTH_MAX,
+  CPU_REAR_REACH_WIDTH_FACTOR,
+  CPU_REAR_REACH_WIDTH_MAX,
+  CPU_WAKE_WIDTH_BASE,
+  CPU_WAKE_WIDTH_GROWTH,
+  CPU_WAKE_DECAY,
+  CPU_WAKE_VERTICAL_SCALE,
+  CPU_WAKE_VERTICAL_OFFSET_FACTOR,
+  CPU_WAKE_VERTICAL_OFFSET_MAX,
+  CPU_WAKE_DEFICIT_BASE,
+  CPU_WAKE_DEFICIT_CD_FACTOR,
+  CPU_WAKE_DEFICIT_MIN,
+  CPU_WAKE_DEFICIT_MAX,
+  CPU_VORTEX_FREQUENCY_TIME,
+  CPU_VORTEX_FREQUENCY_DIST,
+  CPU_VORTEX_BASE,
+  CPU_VORTEX_CD_FACTOR,
+  CPU_VORTEX_CROSS_FACTOR,
+  CPU_VORTEX_Y_FACTOR,
+  CPU_COLLISION_THRESHOLD,
+  CPU_COLLISION_PUSH_BASE,
+  CPU_COLLISION_PUSH_FACTOR,
+  CPU_GROUND_Y,
+  CPU_GROUND_PUSH_FACTOR,
+  CPU_PROJECTION_THRESHOLD,
+  CPU_PROJECTION_CORRECTION,
+  CPU_PROJECTION_GROUND_Y,
+  STREAMLINE_START_STREAMWISE,
+  STREAMLINE_STEPS,
+  STREAMLINE_STEP_LENGTH,
+  STREAMLINE_TIME_STEP,
+  STREAMLINE_MIN_VELOCITY,
+  FLOW_ENVELOPE_HALF_LENGTH_FACTOR,
+  FLOW_ENVELOPE_HALF_WIDTH_FACTOR,
+  FLOW_ENVELOPE_HALF_HEIGHT_FACTOR,
+  FLOW_ENVELOPE_CENTER_Y_OFFSET,
+  FLOW_ENVELOPE_HALF_LENGTH_MIN,
+  FLOW_ENVELOPE_HALF_LENGTH_MAX,
+  FLOW_ENVELOPE_HALF_WIDTH_MIN,
+  FLOW_ENVELOPE_HALF_WIDTH_MAX,
+  FLOW_ENVELOPE_HALF_HEIGHT_MIN,
+  FLOW_ENVELOPE_HALF_HEIGHT_MAX,
+} from "@/lib/flow/solverConstants";
 
 export type FlowPoint = {
   x: number;
@@ -26,8 +91,6 @@ export type StreamlineSeed = {
   height: number;
   phase: number;
 };
-
-const DEG_TO_RAD = Math.PI / 180;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -94,9 +157,9 @@ function fromFlowCoordinates(streamwise: number, lateral: number, yawRadians: nu
 export function createFlowEnvelope(object: ObjectSpec, yawAngleDeg: number): FlowEnvelope {
   const yawRadians = yawAngleDeg * DEG_TO_RAD;
   const bodyLength = object.dimensionsM.length;
-  const bodyHalfLength = clamp(bodyLength * 0.5, 0.48, 2.35);
-  const bodyHalfWidth = clamp(object.dimensionsM.width * 0.5, 0.22, 1.55);
-  const halfHeight = clamp(object.dimensionsM.height * 0.5, 0.14, 1.35);
+  const bodyHalfLength = clamp(bodyLength * FLOW_ENVELOPE_HALF_LENGTH_FACTOR, FLOW_ENVELOPE_HALF_LENGTH_MIN, FLOW_ENVELOPE_HALF_LENGTH_MAX);
+  const bodyHalfWidth = clamp(object.dimensionsM.width * FLOW_ENVELOPE_HALF_WIDTH_FACTOR, FLOW_ENVELOPE_HALF_WIDTH_MIN, FLOW_ENVELOPE_HALF_WIDTH_MAX);
+  const halfHeight = clamp(object.dimensionsM.height * FLOW_ENVELOPE_HALF_HEIGHT_FACTOR, FLOW_ENVELOPE_HALF_HEIGHT_MIN, FLOW_ENVELOPE_HALF_HEIGHT_MAX);
   const cosYaw = Math.abs(Math.cos(yawRadians));
   const sinYaw = Math.abs(Math.sin(yawRadians));
 
@@ -104,7 +167,7 @@ export function createFlowEnvelope(object: ObjectSpec, yawAngleDeg: number): Flo
     halfLength: bodyHalfLength * cosYaw + bodyHalfWidth * sinYaw,
     halfWidth: bodyHalfLength * sinYaw + bodyHalfWidth * cosYaw,
     halfHeight,
-    centerY: halfHeight + 0.05,
+    centerY: halfHeight + FLOW_ENVELOPE_CENTER_Y_OFFSET,
     yawRadians,
   };
 }
@@ -112,10 +175,10 @@ export function createFlowEnvelope(object: ObjectSpec, yawAngleDeg: number): Flo
 /** Signed distance to the visible reduced-order collision model. Negative means inside. */
 export function sampleObjectSdf(point: FlowPoint, object: ObjectSpec, spoilerAngleDeg = 12) {
   if (object.kind === "car") {
-    const body = sdfEllipsoid(translated(point, 0, 0.66, 0), { x: 2.23, y: 0.48, z: 0.89 });
-    const nose = sdfEllipsoid(translated(point, -1.68, 0.66, 0), { x: 0.67, y: 0.39, z: 0.84 });
-    const cabin = sdfEllipsoid(translated(point, 0.38, 1.12, 0), { x: 1.16, y: 0.45, z: 0.73 });
-    const spoilerPoint = translated(point, 1.55, 1.43, 0);
+    const body = sdfEllipsoid(translated(point, CAR_BODY_CENTER.x, CAR_BODY_CENTER.y, CAR_BODY_CENTER.z), CAR_BODY_RADII);
+    const nose = sdfEllipsoid(translated(point, CAR_NOSE_CENTER.x, CAR_NOSE_CENTER.y, CAR_NOSE_CENTER.z), CAR_NOSE_RADII);
+    const cabin = sdfEllipsoid(translated(point, CAR_CABIN_CENTER.x, CAR_CABIN_CENTER.y, CAR_CABIN_CENTER.z), CAR_CABIN_RADII);
+    const spoilerPoint = translated(point, CAR_WING_CENTER.x, CAR_WING_CENTER.y, CAR_WING_CENTER.z);
     const spoilerAngle = spoilerAngleDeg * DEG_TO_RAD;
     const cosAngle = Math.cos(spoilerAngle);
     const sinAngle = Math.sin(spoilerAngle);
@@ -124,18 +187,18 @@ export function sampleObjectSdf(point: FlowPoint, object: ObjectSpec, spoilerAng
       y: spoilerPoint.x * sinAngle + spoilerPoint.y * cosAngle,
       z: spoilerPoint.z,
     };
-    const wing = sdfBox(rotatedSpoilerPoint, { x: 0.34, y: 0.055, z: 0.92 });
-    const leftSupport = sdfBox(translated(point, 1.55, 1.23, 0.62), { x: 0.05, y: 0.22, z: 0.055 });
-    const rightSupport = sdfBox(translated(point, 1.55, 1.23, -0.62), { x: 0.05, y: 0.22, z: 0.055 });
+    const wing = sdfBox(rotatedSpoilerPoint, CAR_WING_HALF_SIZE);
+    const leftSupport = sdfBox(translated(point, CAR_LEFT_SUPPORT_CENTER.x, CAR_LEFT_SUPPORT_CENTER.y, CAR_LEFT_SUPPORT_CENTER.z), CAR_SUPPORT_HALF_SIZE);
+    const rightSupport = sdfBox(translated(point, CAR_RIGHT_SUPPORT_CENTER.x, CAR_RIGHT_SUPPORT_CENTER.y, CAR_RIGHT_SUPPORT_CENTER.z), CAR_SUPPORT_HALF_SIZE);
     return Math.min(body, nose, cabin, wing, leftSupport, rightSupport);
   }
 
   const halfSize = {
-    x: Math.max(object.dimensionsM.length * 0.5, 0.12),
-    y: Math.max(object.dimensionsM.height * 0.5, 0.12),
-    z: Math.max(object.dimensionsM.width * 0.5, 0.12),
+    x: Math.max(object.dimensionsM.length * 0.5, DEFAULT_OBJECT_HALF_SIZE_MIN),
+    y: Math.max(object.dimensionsM.height * 0.5, DEFAULT_OBJECT_HALF_SIZE_MIN),
+    z: Math.max(object.dimensionsM.width * 0.5, DEFAULT_OBJECT_HALF_SIZE_MIN),
   };
-  const localPoint = translated(point, 0, halfSize.y + 0.05, 0);
+  const localPoint = translated(point, 0, halfSize.y + DEFAULT_OBJECT_Y_OFFSET, 0);
   if (object.kind === "box") return sdfBox(localPoint, halfSize);
   if (object.kind === "sphere") return length(localPoint) - Math.min(halfSize.x, halfSize.y, halfSize.z);
   if (object.kind === "wing") return sdfBox(localPoint, { ...halfSize, y: Math.max(halfSize.y * 0.2, 0.06) });
@@ -143,7 +206,7 @@ export function sampleObjectSdf(point: FlowPoint, object: ObjectSpec, spoilerAng
 }
 
 export function sampleObjectNormal(point: FlowPoint, object: ObjectSpec, spoilerAngleDeg = 12): FlowPoint {
-  const epsilon = 0.024;
+  const epsilon = CPU_NORMAL_EPSILON;
   return normalize({
     x: sampleObjectSdf({ ...point, x: point.x + epsilon }, object, spoilerAngleDeg)
       - sampleObjectSdf({ ...point, x: point.x - epsilon }, object, spoilerAngleDeg),
@@ -168,7 +231,7 @@ export function sampleFlowField(
   const crossDirection = { x: -windDirection.z, y: 0, z: windDirection.x };
   const distanceToBody = sampleObjectSdf(point, object, spoilerAngleDeg);
   const normal = sampleObjectNormal(point, object, spoilerAngleDeg);
-  const influence = 1 - clamp((Math.max(distanceToBody, 0) - 0.04) / 1.08, 0, 1);
+  const influence = 1 - clamp((Math.max(distanceToBody, 0) - FLOW_INFLUENCE_CLAMP_MIN) / FLOW_INFLUENCE_CLAMP_MAX, 0, 1);
   const incoming = dot(windDirection, normal);
 
   let velocity: FlowPoint = {
@@ -184,10 +247,10 @@ export function sampleFlowField(
     z: crossDirection.z * (lateral + Math.cos(phase) * 0.055),
   });
   const stagnationIntensity = clamp(influence * Math.max(-incoming, 0), 0, 1);
-  velocity.x += splitDirection.x * stagnationIntensity * 0.72;
-  velocity.y += splitDirection.y * stagnationIntensity * 0.72;
-  velocity.z += splitDirection.z * stagnationIntensity * 0.72;
-  const surfaceAcceleration = 1 + influence * (0.18 + 0.18 * (1 - Math.abs(incoming)));
+  velocity.x += splitDirection.x * stagnationIntensity * FLOW_STAGNATION_FACTOR;
+  velocity.y += splitDirection.y * stagnationIntensity * FLOW_STAGNATION_FACTOR;
+  velocity.z += splitDirection.z * stagnationIntensity * FLOW_STAGNATION_FACTOR;
+  const surfaceAcceleration = 1 + influence * (FLOW_SURFACE_ACCEL_BASE + FLOW_SURFACE_ACCEL_VAR * (1 - Math.abs(incoming)));
   velocity = {
     x: velocity.x * surfaceAcceleration,
     y: velocity.y * surfaceAcceleration,
@@ -195,39 +258,39 @@ export function sampleFlowField(
   };
 
   const streamwise = dot(point, windDirection);
-  const rearReach = Math.min(object.dimensionsM.length * 0.5, 2.23) * Math.abs(windDirection.x)
-    + Math.min(object.dimensionsM.width * 0.5, 1.55) * Math.abs(windDirection.z);
+  const rearReach = Math.min(object.dimensionsM.length * CPU_REAR_REACH_LENGTH_FACTOR, CPU_REAR_REACH_LENGTH_MAX) * Math.abs(windDirection.x)
+    + Math.min(object.dimensionsM.width * CPU_REAR_REACH_WIDTH_FACTOR, CPU_REAR_REACH_WIDTH_MAX) * Math.abs(windDirection.z);
   const wakeDistance = streamwise - rearReach;
-  const vertical = point.y - Math.min(object.dimensionsM.height * 0.48, 0.72);
-  const wakeWidth = 0.76 + Math.max(wakeDistance, 0) * 0.14;
+  const vertical = point.y - Math.min(object.dimensionsM.height * CPU_WAKE_VERTICAL_OFFSET_FACTOR, CPU_WAKE_VERTICAL_OFFSET_MAX);
+  const wakeWidth = CPU_WAKE_WIDTH_BASE + Math.max(wakeDistance, 0) * CPU_WAKE_WIDTH_GROWTH;
   const wakeIntensity = wakeDistance > 0
     ? clamp(
-      Math.exp(-(lateral * lateral + vertical * vertical * 1.22) / Math.max(wakeWidth * wakeWidth, 0.05))
-        * Math.exp(-wakeDistance / 6.4),
+      Math.exp(-(lateral * lateral + vertical * vertical * CPU_WAKE_VERTICAL_SCALE) / Math.max(wakeWidth * wakeWidth, 0.05))
+        * Math.exp(-wakeDistance / CPU_WAKE_DECAY),
       0,
       1,
     )
     : 0;
-  const wakeDeficit = clamp(0.24 + object.dragCoefficient * 0.42, 0.24, 0.58);
+  const wakeDeficit = clamp(CPU_WAKE_DEFICIT_BASE + object.dragCoefficient * CPU_WAKE_DEFICIT_CD_FACTOR, CPU_WAKE_DEFICIT_MIN, CPU_WAKE_DEFICIT_MAX);
   velocity.x *= 1 - wakeIntensity * wakeDeficit;
   velocity.y *= 1 - wakeIntensity * wakeDeficit;
   velocity.z *= 1 - wakeIntensity * wakeDeficit;
 
   const vortex = wakeIntensity
     * turbulenceStrength
-    * (0.17 + object.dragCoefficient * 0.18)
-    * Math.sin(time * 5.1 + wakeDistance * 3.25 + phase);
-  velocity.x += crossDirection.x * vortex * (0.45 + Math.abs(vertical));
-  velocity.z += crossDirection.z * vortex * (0.45 + Math.abs(vertical));
-  velocity.y += vortex * Math.sign(lateral + 0.001) * 0.7;
+    * (CPU_VORTEX_BASE + object.dragCoefficient * CPU_VORTEX_CD_FACTOR)
+    * Math.sin(time * CPU_VORTEX_FREQUENCY_TIME + wakeDistance * CPU_VORTEX_FREQUENCY_DIST + phase);
+  velocity.x += crossDirection.x * vortex * (CPU_VORTEX_CROSS_FACTOR + Math.abs(vertical));
+  velocity.z += crossDirection.z * vortex * (CPU_VORTEX_CROSS_FACTOR + Math.abs(vertical));
+  velocity.y += vortex * Math.sign(lateral + 0.001) * CPU_VORTEX_Y_FACTOR;
 
-  if (distanceToBody < 0.09) {
-    const outwardStrength = 0.24 + Math.max(-distanceToBody, 0) * 5;
+  if (distanceToBody < CPU_COLLISION_THRESHOLD) {
+    const outwardStrength = CPU_COLLISION_PUSH_BASE + Math.max(-distanceToBody, 0) * CPU_COLLISION_PUSH_FACTOR;
     velocity.x += normal.x * outwardStrength;
     velocity.y += normal.y * outwardStrength;
     velocity.z += normal.z * outwardStrength;
   }
-  if (point.y < 0.14) velocity.y += (0.14 - point.y) * 3.2;
+  if (point.y < CPU_GROUND_Y) velocity.y += (CPU_GROUND_Y - point.y) * CPU_GROUND_PUSH_FACTOR;
 
   return {
     velocity,
@@ -247,12 +310,12 @@ export function projectPointOutsideBody(
   void yawAngleDeg;
   void phase;
   const distance = sampleObjectSdf(point, object, spoilerAngleDeg);
-  if (distance >= 0.025) return { ...point, y: Math.max(point.y, 0.055) };
+  if (distance >= CPU_PROJECTION_THRESHOLD) return { ...point, y: Math.max(point.y, CPU_PROJECTION_GROUND_Y) };
   const normal = sampleObjectNormal(point, object, spoilerAngleDeg);
-  const correction = 0.032 - distance;
+  const correction = CPU_PROJECTION_CORRECTION - distance;
   return {
     x: point.x + normal.x * correction,
-    y: Math.max(point.y + normal.y * correction, 0.055),
+    y: Math.max(point.y + normal.y * correction, CPU_PROJECTION_GROUND_Y),
     z: point.z + normal.z * correction,
   };
 }
@@ -261,18 +324,18 @@ export function createStreamline(
   object: ObjectSpec,
   yawAngleDeg: number,
   seed: StreamlineSeed,
-  steps = 88,
-  stepLength = 0.17,
+  steps = STREAMLINE_STEPS,
+  stepLength = STREAMLINE_STEP_LENGTH,
   spoilerAngleDeg = 12,
 ): FlowPoint[] {
   const yawRadians = yawAngleDeg * DEG_TO_RAD;
-  const start = fromFlowCoordinates(-7.1, seed.lateral, yawRadians);
+  const start = fromFlowCoordinates(STREAMLINE_START_STREAMWISE, seed.lateral, yawRadians);
   let point: FlowPoint = { x: start.x, y: seed.height, z: start.z };
   const points: FlowPoint[] = [point];
 
   for (let index = 0; index < steps; index += 1) {
-    const sample = sampleFlowField(point, object, yawAngleDeg, index * 0.035, seed.phase, 1, spoilerAngleDeg);
-    const magnitude = Math.max(length(sample.velocity), 0.08);
+    const sample = sampleFlowField(point, object, yawAngleDeg, index * STREAMLINE_TIME_STEP, seed.phase, 1, spoilerAngleDeg);
+    const magnitude = Math.max(length(sample.velocity), STREAMLINE_MIN_VELOCITY);
     point = projectPointOutsideBody({
       x: point.x + (sample.velocity.x / magnitude) * stepLength,
       y: point.y + (sample.velocity.y / magnitude) * stepLength,

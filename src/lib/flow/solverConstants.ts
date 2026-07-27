@@ -1,3 +1,5 @@
+import { CAR_GEOMETRY } from "./carGeometryProfile";
+
 export const DEG_TO_RAD = Math.PI / 180;
 
 export const FIXED_STEP_SECONDS = 1 / 120;
@@ -11,21 +13,37 @@ export const CPU_NORMAL_EPSILON = 0.024;
 export const GPU_POSITION_NORMAL_EPSILON = 0.018;
 export const GPU_VELOCITY_NORMAL_EPSILON = 0.026;
 
-export const CAR_BODY_CENTER = { x: 0.0, y: 0.66, z: 0.0 };
-export const CAR_BODY_RADII = { x: 2.23, y: 0.48, z: 0.89 };
+// Car geometry profile - single source of truth for car dimensions
+export const CAR_BODY_CENTER = CAR_GEOMETRY.body.center;
+export const CAR_BODY_RADII = CAR_GEOMETRY.body.radii;
 
-export const CAR_NOSE_CENTER = { x: -1.68, y: 0.66, z: 0.0 };
-export const CAR_NOSE_RADII = { x: 0.67, y: 0.39, z: 0.84 };
+export const CAR_NOSE_CENTER = CAR_GEOMETRY.nose.center;
+export const CAR_NOSE_RADII = CAR_GEOMETRY.nose.radii;
 
-export const CAR_CABIN_CENTER = { x: 0.38, y: 1.12, z: 0.0 };
-export const CAR_CABIN_RADII = { x: 1.16, y: 0.45, z: 0.73 };
+export const CAR_CABIN_CENTER = CAR_GEOMETRY.cabin.center;
+export const CAR_CABIN_RADII = CAR_GEOMETRY.cabin.radii;
 
-export const CAR_WING_CENTER = { x: 1.55, y: 1.43, z: 0.0 };
-export const CAR_WING_HALF_SIZE = { x: 0.34, y: 0.055, z: 0.92 };
+export const CAR_WING_CENTER = CAR_GEOMETRY.spoiler.center;
+export const CAR_WING_HALF_SIZE = CAR_GEOMETRY.spoiler.halfSize;
 
-export const CAR_LEFT_SUPPORT_CENTER = { x: 1.55, y: 1.23, z: 0.62 };
-export const CAR_RIGHT_SUPPORT_CENTER = { x: 1.55, y: 1.23, z: -0.62 };
-export const CAR_SUPPORT_HALF_SIZE = { x: 0.05, y: 0.22, z: 0.055 };
+export const CAR_LEFT_SUPPORT_CENTER = CAR_GEOMETRY.spoiler.supports.left.center;
+export const CAR_RIGHT_SUPPORT_CENTER = CAR_GEOMETRY.spoiler.supports.right.center;
+export const CAR_SUPPORT_HALF_SIZE = CAR_GEOMETRY.spoiler.supports.left.halfSize;
+
+export const CAR_WHEEL_RADIUS = CAR_GEOMETRY.wheels.radius;
+export const CAR_WHEEL_WIDTH = CAR_GEOMETRY.wheels.width;
+export const CAR_WHEEL_FRONT_AXLE_X = CAR_GEOMETRY.wheels.frontAxleX;
+export const CAR_WHEEL_REAR_AXLE_X = CAR_GEOMETRY.wheels.rearAxleX;
+export const CAR_WHEEL_TRACK_HALF_WIDTH = CAR_GEOMETRY.wheels.trackHalfWidth;
+export const CAR_WHEEL_HUB_RADIUS = CAR_GEOMETRY.wheels.hubRadius;
+export const CAR_WHEEL_CENTER_Y = CAR_GEOMETRY.wheels.centerY;
+
+export const CAR_NOSE_TIP_X = CAR_GEOMETRY.noseTipX;
+export const CAR_TAIL_X = CAR_GEOMETRY.tailX;
+export const CAR_TOP_Y = CAR_GEOMETRY.topY;
+export const CAR_BOTTOM_Y = CAR_GEOMETRY.bottomY;
+export const CAR_LEFT_Z = CAR_GEOMETRY.leftZ;
+export const CAR_RIGHT_Z = CAR_GEOMETRY.rightZ;
 
 export const DEFAULT_OBJECT_HALF_SIZE_MIN = 0.12;
 export const DEFAULT_OBJECT_Y_OFFSET = 0.05;

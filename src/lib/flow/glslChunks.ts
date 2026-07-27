@@ -58,6 +58,12 @@ import {
   RENDER_TRAIL_LENGTH_BASE,
   RENDER_TRAIL_LENGTH_SPEED_CAP,
   RENDER_TRAIL_LENGTH_SPEED_FACTOR,
+  CAR_WHEEL_RADIUS,
+  CAR_WHEEL_WIDTH,
+  CAR_WHEEL_FRONT_AXLE_X,
+  CAR_WHEEL_REAR_AXLE_X,
+  CAR_WHEEL_TRACK_HALF_WIDTH,
+  CAR_WHEEL_CENTER_Y,
 } from "./solverConstants";
 
 export const GLSL_HASH21 = /* glsl */ `
@@ -84,6 +90,13 @@ float sdBox(vec3 p, vec3 halfSize) {
 }
 `;
 
+export const GLSL_SD_CYLINDER = /* glsl */ `
+float sdCylinder(vec3 p, float radius, float height) {
+  vec2 d = vec2(length(p.xz) - radius, abs(p.y) - height * 0.5);
+  return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+`;
+
 export const GLSL_SCENE_SDF_CAR = /* glsl */ `
 float sceneSdfCar(vec3 p, float spoilerAngle) {
   float body = sdEllipsoid(p - vec3(${CAR_BODY_CENTER.x.toFixed(2)}, ${CAR_BODY_CENTER.y.toFixed(2)}, ${CAR_BODY_CENTER.z.toFixed(2)}), vec3(${CAR_BODY_RADII.x.toFixed(2)}, ${CAR_BODY_RADII.y.toFixed(2)}, ${CAR_BODY_RADII.z.toFixed(2)}));
@@ -99,7 +112,21 @@ float sceneSdfCar(vec3 p, float spoilerAngle) {
     sdBox(p - vec3(${CAR_LEFT_SUPPORT_CENTER.x.toFixed(2)}, ${CAR_LEFT_SUPPORT_CENTER.y.toFixed(2)}, ${CAR_LEFT_SUPPORT_CENTER.z.toFixed(2)}), vec3(${CAR_LEFT_SUPPORT_HALF_SIZE.x.toFixed(2)}, ${CAR_LEFT_SUPPORT_HALF_SIZE.y.toFixed(2)}, ${CAR_LEFT_SUPPORT_HALF_SIZE.z.toFixed(2)})),
     sdBox(p - vec3(${CAR_RIGHT_SUPPORT_CENTER.x.toFixed(2)}, ${CAR_RIGHT_SUPPORT_CENTER.y.toFixed(2)}, ${CAR_RIGHT_SUPPORT_CENTER.z.toFixed(2)}), vec3(${CAR_RIGHT_SUPPORT_HALF_SIZE.x.toFixed(2)}, ${CAR_RIGHT_SUPPORT_HALF_SIZE.y.toFixed(2)}, ${CAR_RIGHT_SUPPORT_HALF_SIZE.z.toFixed(2)}))
   );
-  return min(min(min(body, nose), cabin), min(wing, supports));
+
+  // Wheels collision (4 cylinders)
+  float wheelR = ${CAR_WHEEL_RADIUS.toFixed(2)};
+  float wheelH = ${CAR_WHEEL_WIDTH.toFixed(2)};
+  float wheelY = ${CAR_WHEEL_CENTER_Y.toFixed(2)};
+  float frontAxleX = ${CAR_WHEEL_FRONT_AXLE_X.toFixed(2)};
+  float rearAxleX = ${CAR_WHEEL_REAR_AXLE_X.toFixed(2)};
+  float trackHalf = ${CAR_WHEEL_TRACK_HALF_WIDTH.toFixed(2)};
+  float wheels = 1e9;
+  wheels = min(wheels, sdCylinder(p - vec3(frontAxleX, wheelY, trackHalf), wheelR, wheelH));
+  wheels = min(wheels, sdCylinder(p - vec3(frontAxleX, wheelY, -trackHalf), wheelR, wheelH));
+  wheels = min(wheels, sdCylinder(p - vec3(rearAxleX, wheelY, trackHalf), wheelR, wheelH));
+  wheels = min(wheels, sdCylinder(p - vec3(rearAxleX, wheelY, -trackHalf), wheelR, wheelH));
+
+  return min(min(min(min(body, nose), cabin), min(wing, supports)), wheels);
 }
 `;
 

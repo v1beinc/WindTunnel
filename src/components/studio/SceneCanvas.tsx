@@ -18,6 +18,7 @@ import {
   type StreamlineSeed,
 } from "@/lib/physics/flowField";
 import type { FlowMode, Overlays } from "@/lib/store";
+import { CAR_GEOMETRY } from "@/lib/flow/carGeometryProfile";
 
 export type CameraPreset = "perspective" | "side";
 
@@ -535,6 +536,75 @@ function TunnelShell() {
   );
 }
 
+function DebugCollisionEnvelope({ spoilerAngleDeg, enabled }: { spoilerAngleDeg: number; enabled: boolean }) {
+  if (!enabled) return null;
+  const g = CAR_GEOMETRY;
+
+  return (
+    <group>
+      {/* Body ellipsoid */}
+      <mesh position={[g.body.center.x, g.body.center.y, g.body.center.z]} scale={[g.body.radii.x * 2, g.body.radii.y * 2, g.body.radii.z * 2]}>
+        <sphereGeometry args={[1, 24, 16]} />
+        <meshBasicMaterial color="#74d4bd" transparent opacity={0.15} wireframe />
+      </mesh>
+
+      {/* Nose ellipsoid */}
+      <mesh position={[g.nose.center.x, g.nose.center.y, g.nose.center.z]} scale={[g.nose.radii.x * 2, g.nose.radii.y * 2, g.nose.radii.z * 2]}>
+        <sphereGeometry args={[1, 16, 12]} />
+        <meshBasicMaterial color="#74d4bd" transparent opacity={0.15} wireframe />
+      </mesh>
+
+      {/* Cabin ellipsoid */}
+      <mesh position={[g.cabin.center.x, g.cabin.center.y, g.cabin.center.z]} scale={[g.cabin.radii.x * 2, g.cabin.radii.y * 2, g.cabin.radii.z * 2]}>
+        <sphereGeometry args={[1, 16, 12]} />
+        <meshBasicMaterial color="#dcae61" transparent opacity={0.15} wireframe />
+      </mesh>
+
+      {/* Spoiler */}
+      <group position={[g.spoiler.center.x, g.spoiler.center.y, g.spoiler.center.z]} rotation={[0, 0, -spoilerAngleDeg * Math.PI / 180]}>
+        <mesh scale={[g.spoiler.halfSize.x * 2, g.spoiler.halfSize.y * 2, g.spoiler.halfSize.z * 2]}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshBasicMaterial color="#e6b45f" transparent opacity={0.2} wireframe />
+        </mesh>
+        <mesh position={[g.spoiler.supports.left.halfSize.x, g.spoiler.supports.left.halfSize.y, g.spoiler.supports.left.center.z]} scale={[g.spoiler.supports.left.halfSize.x * 2, g.spoiler.supports.left.halfSize.y * 2, g.spoiler.supports.left.halfSize.z * 2]}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshBasicMaterial color="#e6b45f" transparent opacity={0.2} wireframe />
+        </mesh>
+        <mesh position={[g.spoiler.supports.right.halfSize.x, g.spoiler.supports.right.halfSize.y, g.spoiler.supports.right.center.z]} scale={[g.spoiler.supports.right.halfSize.x * 2, g.spoiler.supports.right.halfSize.y * 2, g.spoiler.supports.right.halfSize.z * 2]}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshBasicMaterial color="#e6b45f" transparent opacity={0.2} wireframe />
+        </mesh>
+      </group>
+
+      {/* Wheels as wireframe cylinders */}
+      <group position={[g.wheels.frontAxleX, g.wheels.radius - g.groundClearance, g.wheels.trackHalfWidth]}>
+        <mesh scale={[g.wheels.radius * 2, g.wheels.width, g.wheels.radius * 2]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[1, 1, 1, 16, 1]} />
+          <meshBasicMaterial color="#74d4bd" transparent opacity={0.12} wireframe />
+        </mesh>
+      </group>
+      <group position={[g.wheels.frontAxleX, g.wheels.radius - g.groundClearance, -g.wheels.trackHalfWidth]}>
+        <mesh scale={[g.wheels.radius * 2, g.wheels.width, g.wheels.radius * 2]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[1, 1, 1, 16, 1]} />
+          <meshBasicMaterial color="#74d4bd" transparent opacity={0.12} wireframe />
+        </mesh>
+      </group>
+      <group position={[g.wheels.rearAxleX, g.wheels.radius - g.groundClearance, g.wheels.trackHalfWidth]}>
+        <mesh scale={[g.wheels.radius * 2, g.wheels.width, g.wheels.radius * 2]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[1, 1, 1, 16, 1]} />
+          <meshBasicMaterial color="#74d4bd" transparent opacity={0.12} wireframe />
+        </mesh>
+      </group>
+      <group position={[g.wheels.rearAxleX, g.wheels.radius - g.groundClearance, -g.wheels.trackHalfWidth]}>
+        <mesh scale={[g.wheels.radius * 2, g.wheels.width, g.wheels.radius * 2]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[1, 1, 1, 16, 1]} />
+          <meshBasicMaterial color="#74d4bd" transparent opacity={0.12} wireframe />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 function SceneContent({
   object,
   metrics,
@@ -604,6 +674,7 @@ function SceneContent({
           )}
         </Suspense>
       </ModelErrorBoundary>
+      <DebugCollisionEnvelope spoilerAngleDeg={spoilerAngleDeg} enabled={overlays.pressure} />
       <ContactShadows position={[0, 0.02, 0]} opacity={0.42} scale={8} blur={2.8} far={5} frames={1} />
       <OrbitControls makeDefault enablePan={false} minDistance={4.8} maxDistance={12} target={[0, 0.8, 0]} />
     </>

@@ -13,6 +13,12 @@ import {
   CAR_LEFT_SUPPORT_CENTER,
   CAR_RIGHT_SUPPORT_CENTER,
   CAR_SUPPORT_HALF_SIZE,
+  CAR_WHEEL_RADIUS,
+  CAR_WHEEL_WIDTH,
+  CAR_WHEEL_FRONT_AXLE_X,
+  CAR_WHEEL_REAR_AXLE_X,
+  CAR_WHEEL_TRACK_HALF_WIDTH,
+  CAR_WHEEL_CENTER_Y,
   DEFAULT_OBJECT_HALF_SIZE_MIN,
   DEFAULT_OBJECT_Y_OFFSET,
   FLOW_INFLUENCE_CLAMP_MIN,
@@ -132,6 +138,11 @@ function sdfBox(point: FlowPoint, halfSize: FlowPoint) {
     + Math.min(Math.max(q.x, Math.max(q.y, q.z)), 0);
 }
 
+function sdfCylinder(point: FlowPoint, radius: number, halfHeight: number) {
+  const d = { x: Math.hypot(point.x, point.z) - radius, y: Math.abs(point.y) - halfHeight };
+  return Math.min(Math.max(d.x, d.y), 0) + Math.hypot(Math.max(d.x, 0), Math.max(d.y, 0));
+}
+
 function translated(point: FlowPoint, x: number, y: number, z: number): FlowPoint {
   return { x: point.x - x, y: point.y - y, z: point.z - z };
 }
@@ -190,7 +201,19 @@ export function sampleObjectSdf(point: FlowPoint, object: ObjectSpec, spoilerAng
     const wing = sdfBox(rotatedSpoilerPoint, CAR_WING_HALF_SIZE);
     const leftSupport = sdfBox(translated(point, CAR_LEFT_SUPPORT_CENTER.x, CAR_LEFT_SUPPORT_CENTER.y, CAR_LEFT_SUPPORT_CENTER.z), CAR_SUPPORT_HALF_SIZE);
     const rightSupport = sdfBox(translated(point, CAR_RIGHT_SUPPORT_CENTER.x, CAR_RIGHT_SUPPORT_CENTER.y, CAR_RIGHT_SUPPORT_CENTER.z), CAR_SUPPORT_HALF_SIZE);
-    return Math.min(body, nose, cabin, wing, leftSupport, rightSupport);
+
+    // Wheels collision (4 cylinders)
+    const wheelR = CAR_WHEEL_RADIUS;
+    const wheelH = CAR_WHEEL_WIDTH * 0.5;
+    const wheelY = CAR_WHEEL_CENTER_Y;
+    const wheels = Math.min(
+      sdfCylinder(translated(point, CAR_WHEEL_FRONT_AXLE_X, wheelY, CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH),
+      sdfCylinder(translated(point, CAR_WHEEL_FRONT_AXLE_X, wheelY, -CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH),
+      sdfCylinder(translated(point, CAR_WHEEL_REAR_AXLE_X, wheelY, CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH),
+      sdfCylinder(translated(point, CAR_WHEEL_REAR_AXLE_X, wheelY, -CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH)
+    );
+
+    return Math.min(body, nose, cabin, wing, leftSupport, rightSupport, wheels);
   }
 
   const halfSize = {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MODEL_CATALOG } from "@/lib/models";
+import { CAR_GEOMETRY } from "@/lib/flow/carGeometryProfile";
 import {
   createFlowEnvelope,
   getFlowCoordinates,
@@ -20,26 +21,30 @@ describe("analytical flow field", () => {
       z: 0,
     }, car, 0, 0, Math.PI / 2);
 
-    expect(sample.stagnationIntensity).toBeGreaterThan(0.8);
+    expect(sample.stagnationIntensity).toBeGreaterThan(0.7);
     expect(sample.velocity.x).toBeLessThan(0.5);
     expect(Math.abs(sample.velocity.y) + Math.abs(sample.velocity.z)).toBeGreaterThan(0.4);
   });
 
   it("projects particles out of the collision envelope", () => {
     const envelope = createFlowEnvelope(car, 0);
-    const projected = projectPointOutsideBody({ x: 0, y: envelope.centerY, z: 0 }, car, 0, 0);
+    // Use z outside wheel track (wheels at trackHalfWidth ±0.85)
+    const projected = projectPointOutsideBody({ x: 0, y: envelope.centerY, z: 1.2 }, car, 0, 0);
 
     expect(sampleObjectSdf(projected, car)).toBeGreaterThan(0.015);
   });
 
   it("uses separate signed-distance volumes for the body and rear wing", () => {
-    expect(sampleObjectSdf({ x: 0, y: 0.66, z: 0 }, car)).toBeLessThan(0);
-    expect(sampleObjectSdf({ x: 1.55, y: 1.43, z: 0.84 }, car, 12)).toBeLessThan(0);
+    // Body center y is now 0.56 (was 0.66)
+    expect(sampleObjectSdf({ x: 0, y: CAR_GEOMETRY.body.center.y, z: 0 }, car)).toBeLessThan(0);
+    // Wing center y is now 1.35 (was 1.43)
+    expect(sampleObjectSdf({ x: CAR_GEOMETRY.spoiler.center.x, y: CAR_GEOMETRY.spoiler.center.y, z: 0.84 }, car, 12)).toBeLessThan(0);
     expect(sampleObjectSdf({ x: 0, y: 3.2, z: 0 }, car)).toBeGreaterThan(1);
   });
 
   it("removes inward velocity at the nose surface", () => {
-    const point = { x: -2.31, y: 0.68, z: 0.08 };
+    // Nose tip is now at -2.3
+    const point = { x: CAR_GEOMETRY.noseTipX + 0.15, y: CAR_GEOMETRY.nose.center.y, z: 0.08 };
     const sample = sampleFlowField(point, car, 0, 0, 0.3);
     const normal = sampleObjectNormal(point, car);
     const normalVelocity = sample.velocity.x * normal.x

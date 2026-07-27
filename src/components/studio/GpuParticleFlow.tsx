@@ -120,9 +120,9 @@ export function GpuParticleFlow({
   const renderMaterial = useRef<THREE.ShaderMaterial>(null);
   const accumulator = useRef(0);
   const cycle = useRef(0);
-  const initAttempted = useRef(false);
   const contextLost = useRef(false);
   const [gpuStatus, setGpuStatus] = useState<GpuStatus>(supported ? "initializing" : "unsupported");
+  const [initVersion, setInitVersion] = useState(0);
 
   const geometry = useMemo(() => {
     const positions = new Float32Array(PARTICLE_COUNT * 2 * 3);
@@ -158,23 +158,20 @@ export function GpuParticleFlow({
       return;
     }
 
-    if (initAttempted.current) {
-      return;
-    }
-    initAttempted.current = true;
-
+    let cancelled = false;
     const canvas = gl.domElement;
 
     const handleContextLost = (event: Event) => {
       event.preventDefault();
+      if (cancelled) return;
       contextLost.current = true;
       setGpuStatus("context-lost");
     };
 
     const handleContextRestored = () => {
+      if (cancelled) return;
       contextLost.current = false;
-      initAttempted.current = false;
-      setGpuStatus("initializing");
+      setInitVersion((v) => v + 1);
     };
 
     canvas.addEventListener("webglcontextlost", handleContextLost);
@@ -222,7 +219,14 @@ export function GpuParticleFlow({
     const error = compute.init();
     if (error) {
       console.warn(`GPU flow fallback: ${error}`);
-      queueMicrotask(() => setGpuStatus("error"));
+      if (!cancelled) {
+        queueMicrotask(() => setGpuStatus("error"));
+      }
+      compute.dispose();
+      return;
+    }
+
+    if (cancelled) {
       compute.dispose();
       return;
     }
@@ -240,11 +244,12 @@ export function GpuParticleFlow({
     }
 
     return () => {
+      cancelled = true;
       canvas.removeEventListener("webglcontextlost", handleContextLost);
       canvas.removeEventListener("webglcontextrestored", handleContextRestored);
       cleanup();
     };
-  }, [gl, supported]);
+  }, [gl, supported, initVersion]);
 
   useEffect(() => () => {
     geometry.dispose();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { GPUComputationRenderer, type Variable } from "three/examples/jsm/misc/GPUComputationRenderer.js";
 import * as THREE from "three";
@@ -118,6 +118,8 @@ export function GpuParticleFlow({
   const renderMaterial = useRef<THREE.ShaderMaterial>(null);
   const accumulator = useRef(0);
   const cycle = useRef(0);
+  const [gpuReady, setGpuReady] = useState(false);
+  const [gpuError, setGpuError] = useState<string | null>(supported ? null : "WebGL2 or vertex textures not supported");
 
   const geometry = useMemo(() => {
     const positions = new Float32Array(PARTICLE_COUNT * 2 * 3);
@@ -192,13 +194,19 @@ export function GpuParticleFlow({
     const error = compute.init();
     if (error) {
       console.warn(`GPU flow fallback: ${error}`);
+      queueMicrotask(() => setGpuError(`GPU initialization failed: ${error}`));
       compute.dispose();
       return;
     }
 
+    queueMicrotask(() => {
+      setGpuReady(true);
+      setGpuError(null);
+    });
     runtime.current = { compute, positionVariable, velocityVariable };
 
     return () => {
+      setGpuReady(false);
       runtime.current = null;
       compute.dispose();
     };
@@ -258,7 +266,9 @@ export function GpuParticleFlow({
     currentMaterial.uniforms.textureVelocity.value = current.compute.getCurrentRenderTarget(current.velocityVariable).texture;
   });
 
-  if (!supported) return fallback;
+  if (!supported || gpuError) return fallback;
+
+  if (!gpuReady) return null;
 
   return (
     <lineSegments geometry={geometry} visible={enabled} frustumCulled={false}>

@@ -7,6 +7,7 @@ import { ContactShadows, Line, OrbitControls, PerspectiveCamera, useGLTF } from 
 import * as THREE from "three";
 import { GpuParticleFlow } from "@/components/studio/GpuParticleFlow";
 import { SportsCarModel } from "@/components/studio/SportsCarModel";
+import { CoherentStreamlines, CoherentRibbons } from "@/components/studio/CoherentFlow";
 import type { ObjectSpec, SimulationMetrics } from "@/lib/physics/aerodynamics";
 import {
   createFlowEnvelope,
@@ -641,30 +642,64 @@ function SceneContent({
       <TunnelShell />
       {flowMode === "streamlines" && (
         <>
-          <SmokeRibbons object={flowObject} yaw={yawAngleDeg} spoilerAngleDeg={spoilerAngleDeg} enabled />
-          <Streamlines object={flowObject} yaw={yawAngleDeg} spoilerAngleDeg={spoilerAngleDeg} enabled />
+          <CoherentRibbons
+            object={flowObject}
+            yaw={yawAngleDeg}
+            spoilerAngleDeg={spoilerAngleDeg}
+            enabled
+            running={running}
+            turbulenceStrength={overlays.wake ? 1 : 0}
+          />
+          <CoherentStreamlines
+            object={flowObject}
+            yaw={yawAngleDeg}
+            spoilerAngleDeg={spoilerAngleDeg}
+            enabled
+            running={running}
+            turbulenceStrength={overlays.wake ? 1 : 0}
+            metrics={metrics}
+          />
         </>
       )}
       {flowMode === "particles" && (
-        <GpuParticleFlow
-          object={flowObject}
-          yaw={yawAngleDeg}
-          speed={metrics.effectiveWindSpeedMps}
-          spoilerAngleDeg={spoilerAngleDeg}
-          enabled
-          running={running}
-          turbulenceStrength={overlays.wake ? 1 : 0}
-          fallback={(
-            <CpuParticleFlow
-              object={flowObject}
-              yaw={yawAngleDeg}
-              speed={metrics.effectiveWindSpeedMps}
-              enabled
-              running={running}
-              turbulenceStrength={overlays.wake ? 1 : 0}
-            />
-          )}
-        />
+        <>
+          <CoherentRibbons
+            object={flowObject}
+            yaw={yawAngleDeg}
+            spoilerAngleDeg={spoilerAngleDeg}
+            enabled
+            running={running}
+            turbulenceStrength={overlays.wake ? 1 : 0}
+          />
+          <CoherentStreamlines
+            object={flowObject}
+            yaw={yawAngleDeg}
+            spoilerAngleDeg={spoilerAngleDeg}
+            enabled
+            running={running}
+            turbulenceStrength={overlays.wake ? 1 : 0}
+            metrics={metrics}
+          />
+          <GpuParticleFlow
+            object={flowObject}
+            yaw={yawAngleDeg}
+            speed={metrics.effectiveWindSpeedMps}
+            spoilerAngleDeg={spoilerAngleDeg}
+            enabled
+            running={running}
+            turbulenceStrength={overlays.wake ? 1 : 0}
+            fallback={(
+              <CpuParticleFlow
+                object={flowObject}
+                yaw={yawAngleDeg}
+                speed={metrics.effectiveWindSpeedMps}
+                enabled
+                running={running}
+                turbulenceStrength={overlays.wake ? 1 : 0}
+              />
+            )}
+          />
+        </>
       )}
       {flowMode === "pressure" && (
         <PressureField object={flowObject} yaw={yawAngleDeg} intensity={intensity} enabled />

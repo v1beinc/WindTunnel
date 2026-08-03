@@ -169,8 +169,8 @@ export const HASH21_MUL1 = 123.34;
 export const HASH21_MUL2 = 456.21;
 export const HASH21_ADD = 45.32;
 
-export const CAR_LEFT_SUPPORT_HALF_SIZE = { x: 0.05, y: 0.22, z: 0.055 };
-export const CAR_RIGHT_SUPPORT_HALF_SIZE = { x: 0.05, y: 0.22, z: 0.055 };
+export const CAR_LEFT_SUPPORT_HALF_SIZE = CAR_GEOMETRY.spoiler.supports.left.halfSize;
+export const CAR_RIGHT_SUPPORT_HALF_SIZE = CAR_GEOMETRY.spoiler.supports.right.halfSize;
 
 export const GENERIC_HALF_SIZE_MIN = 0.12;
 export const GENERIC_GROUND_OFFSET = 0.05;

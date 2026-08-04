@@ -6,8 +6,14 @@ export const FIXED_STEP_SECONDS = 1 / 120;
 export const MAX_SUBSTEPS = 12;
 export const MAX_ACCUMULATOR_SECONDS = FIXED_STEP_SECONDS * MAX_SUBSTEPS * 2;
 
-export const COMPUTE_SIZE = 128;
+export const COMPUTE_SIZE = 96;
 export const PARTICLE_COUNT = COMPUTE_SIZE * COMPUTE_SIZE;
+
+// Visual advection is intentionally scaled for a readable desktop scene;
+// the physical speed remains available in SimulationMetrics.
+export const FLOW_VISUAL_SPEED_BASE = 0.9;
+export const FLOW_VISUAL_SPEED_PER_MPS = 0.12;
+export const FLOW_VISUAL_SPEED_MAX = 4.3;
 
 export const CPU_NORMAL_EPSILON = 0.024;
 export const GPU_POSITION_NORMAL_EPSILON = 0.018;
@@ -247,6 +253,6 @@ export const STREAMLINE_MIN_VELOCITY = 0.08;
 export const RIBBON_STEPS = 96;
 export const RIBBON_STEP_LENGTH = 0.16;
 
-export const RENDER_TRAIL_LENGTH_BASE = 0.075;
-export const RENDER_TRAIL_LENGTH_SPEED_CAP = 4.2;
-export const RENDER_TRAIL_LENGTH_SPEED_FACTOR = 0.055;
+export const RENDER_TRAIL_LENGTH_BASE = 0.05;
+export const RENDER_TRAIL_LENGTH_SPEED_CAP = 4.3;
+export const RENDER_TRAIL_LENGTH_SPEED_FACTOR = 0.032;

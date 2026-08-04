@@ -11,6 +11,9 @@ import {
   MAX_ACCUMULATOR_SECONDS,
   COMPUTE_SIZE,
   PARTICLE_COUNT,
+  FLOW_VISUAL_SPEED_BASE,
+  FLOW_VISUAL_SPEED_PER_MPS,
+  FLOW_VISUAL_SPEED_MAX,
   GLSL_HASH21,
   GLSL_SD_ELLIPSOID,
   GLSL_SD_BOX,
@@ -268,7 +271,9 @@ export function GpuParticleFlow({
 
     const yawRadians = THREE.MathUtils.degToRad(yaw);
     const spoilerRadians = THREE.MathUtils.degToRad(spoilerAngleDeg);
-    const flowSpeed = speed <= 0.01 ? 0 : 0.82 + Math.min(speed / 20, 3.35);
+    const flowSpeed = speed <= 0.01
+      ? 0
+      : Math.min(FLOW_VISUAL_SPEED_BASE + speed * FLOW_VISUAL_SPEED_PER_MPS, FLOW_VISUAL_SPEED_MAX);
     const objectKind = getObjectKind(object.kind);
     const dimensions = object.dimensionsM;
     const positionUniforms = current.positionVariable.material.uniforms;

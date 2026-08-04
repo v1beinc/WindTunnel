@@ -300,7 +300,7 @@ export function StudioShell() {
               <div className="secondary-toggle">
                 <Toggle icon={Waves} label="Turbulent wake" active={overlays.wake} onClick={() => setOverlay("wake")} />
               </div>
-              <div className="solver-note"><span className="live-dot" /> {flowMode === "particles" ? "GPU advection · 16.4K tracers · 120 Hz" : `${FLOW_MODE_LABELS[flowMode]} active`}</div>
+              <div className="solver-note"><span className="live-dot" /> {flowMode === "particles" ? "GPU advection · 9.2K tracers · 120 Hz" : `${FLOW_MODE_LABELS[flowMode]} active`}</div>
             </div>
           </aside>
 

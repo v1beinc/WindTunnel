@@ -1,4 +1,5 @@
 import type { ObjectSpec } from "@/lib/physics/aerodynamics";
+import { CAR_GEOMETRY } from "@/lib/flow/carGeometryProfile";
 import {
   DEG_TO_RAD,
   CPU_NORMAL_EPSILON,
@@ -167,10 +168,13 @@ function fromFlowCoordinates(streamwise: number, lateral: number, yawRadians: nu
 
 export function createFlowEnvelope(object: ObjectSpec, yawAngleDeg: number): FlowEnvelope {
   const yawRadians = yawAngleDeg * DEG_TO_RAD;
-  const bodyLength = object.dimensionsM.length;
+  const isCar = object.kind === "car";
+  const bodyLength = isCar ? CAR_GEOMETRY.tailX - CAR_GEOMETRY.noseTipX : object.dimensionsM.length;
+  const bodyWidth = isCar ? CAR_GEOMETRY.width : object.dimensionsM.width;
+  const bodyHeight = isCar ? CAR_GEOMETRY.topY - CAR_GEOMETRY.bottomY : object.dimensionsM.height;
   const bodyHalfLength = clamp(bodyLength * FLOW_ENVELOPE_HALF_LENGTH_FACTOR, FLOW_ENVELOPE_HALF_LENGTH_MIN, FLOW_ENVELOPE_HALF_LENGTH_MAX);
-  const bodyHalfWidth = clamp(object.dimensionsM.width * FLOW_ENVELOPE_HALF_WIDTH_FACTOR, FLOW_ENVELOPE_HALF_WIDTH_MIN, FLOW_ENVELOPE_HALF_WIDTH_MAX);
-  const halfHeight = clamp(object.dimensionsM.height * FLOW_ENVELOPE_HALF_HEIGHT_FACTOR, FLOW_ENVELOPE_HALF_HEIGHT_MIN, FLOW_ENVELOPE_HALF_HEIGHT_MAX);
+  const bodyHalfWidth = clamp(bodyWidth * FLOW_ENVELOPE_HALF_WIDTH_FACTOR, FLOW_ENVELOPE_HALF_WIDTH_MIN, FLOW_ENVELOPE_HALF_WIDTH_MAX);
+  const halfHeight = clamp(bodyHeight * FLOW_ENVELOPE_HALF_HEIGHT_FACTOR, FLOW_ENVELOPE_HALF_HEIGHT_MIN, FLOW_ENVELOPE_HALF_HEIGHT_MAX);
   const cosYaw = Math.abs(Math.cos(yawRadians));
   const sinYaw = Math.abs(Math.sin(yawRadians));
 
@@ -178,7 +182,9 @@ export function createFlowEnvelope(object: ObjectSpec, yawAngleDeg: number): Flo
     halfLength: bodyHalfLength * cosYaw + bodyHalfWidth * sinYaw,
     halfWidth: bodyHalfLength * sinYaw + bodyHalfWidth * cosYaw,
     halfHeight,
-    centerY: halfHeight + FLOW_ENVELOPE_CENTER_Y_OFFSET,
+    centerY: isCar
+      ? (CAR_GEOMETRY.topY + CAR_GEOMETRY.bottomY) * 0.5
+      : halfHeight + FLOW_ENVELOPE_CENTER_Y_OFFSET,
     yawRadians,
   };
 }

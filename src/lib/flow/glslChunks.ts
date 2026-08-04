@@ -301,7 +301,7 @@ void main() {
   vec3 color = mix(slowColor, baseColor, smoothstep(0.38, 0.92, vSpeedRatio));
   color = mix(color, fastColor, smoothstep(1.03, 1.34, vSpeedRatio));
   color = mix(color, wakeColor, smoothstep(0.18, 0.72, vWake));
-  float alpha = mix(0.08, 0.78, vLineEnd) * (0.58 + min(vSpeedRatio, 1.3) * 0.28);
+  float alpha = mix(0.035, 0.42, vLineEnd) * (0.52 + min(vSpeedRatio, 1.3) * 0.22);
   gl_FragColor = vec4(color, alpha);
 }
 `;

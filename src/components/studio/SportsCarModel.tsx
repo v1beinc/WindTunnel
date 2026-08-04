@@ -15,11 +15,11 @@ function Wheel({ radius, width }: { radius: number; width: number }) {
         <cylinderGeometry args={[radius, radius, width, 32, 1]} />
         <meshStandardMaterial color="#0a0d0f" roughness={0.7} metalness={0.05} />
       </mesh>
-      <mesh position={[0, 0, width * 0.52]}>
+      <mesh position={[0, width * 0.52, 0]}>
         <cylinderGeometry args={[radius * 0.6, radius * 0.6, 0.04, 32]} />
         <meshStandardMaterial color="#2a3439" metalness={0.85} roughness={0.2} />
       </mesh>
-      <mesh position={[0, 0, -width * 0.52]}>
+      <mesh position={[0, -width * 0.52, 0]}>
         <cylinderGeometry args={[radius * 0.6, radius * 0.6, 0.04, 32]} />
         <meshStandardMaterial color="#2a3439" metalness={0.85} roughness={0.2} />
       </mesh>
@@ -27,9 +27,9 @@ function Wheel({ radius, width }: { radius: number; width: number }) {
   );
 }
 
-function Hubcap({ radius }: { radius: number }) {
+function Hubcap({ radius, offsetZ }: { radius: number; offsetZ: number }) {
   return (
-    <group rotation={[Math.PI / 2, 0, 0]}>
+    <group position={[0, 0, offsetZ]} rotation={[Math.PI / 2, 0, 0]}>
       <mesh>
         <cylinderGeometry args={[radius * 0.55, radius * 0.55, 0.035, 32]} />
         <meshStandardMaterial color="#3a454a" metalness={0.8} roughness={0.25} />
@@ -37,6 +37,25 @@ function Hubcap({ radius }: { radius: number }) {
       <mesh position={[0, 0, 0.02]}>
         <cylinderGeometry args={[radius * 0.2, radius * 0.2, 0.025, 24]} />
         <meshStandardMaterial color="#4e5a5f" metalness={0.75} roughness={0.22} />
+      </mesh>
+    </group>
+  );
+}
+
+function WheelFace({ radius, hubRadius, offsetZ }: { radius: number; hubRadius: number; offsetZ: number }) {
+  return (
+    <group position={[0, 0, offsetZ]} renderOrder={4}>
+      <mesh renderOrder={4}>
+        <circleGeometry args={[radius, 32]} />
+        <meshBasicMaterial color="#050708" side={THREE.DoubleSide} depthTest={false} />
+      </mesh>
+      <mesh position={[0, 0, 0.006]} renderOrder={5}>
+        <circleGeometry args={[hubRadius, 24]} />
+        <meshBasicMaterial color="#829398" side={THREE.DoubleSide} depthTest={false} />
+      </mesh>
+      <mesh position={[0, 0, 0.012]} renderOrder={6}>
+        <circleGeometry args={[hubRadius * 0.22, 20]} />
+        <meshBasicMaterial color="#11181d" side={THREE.DoubleSide} depthTest={false} />
       </mesh>
     </group>
   );
@@ -71,6 +90,18 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
     return geo;
   }, [g.cabin.center.x, g.cabin.center.y, g.cabin.center.z, g.cabin.radii.x, g.cabin.radii.y, g.cabin.radii.z]);
 
+  const windowGeometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.72, 0.80);
+    shape.lineTo(-0.25, 1.08);
+    shape.lineTo(0.36, 1.13);
+    shape.lineTo(0.88, 1.03);
+    shape.lineTo(1.02, 0.88);
+    shape.lineTo(0.96, 0.80);
+    shape.closePath();
+    return new THREE.ShapeGeometry(shape);
+  }, []);
+
   // Spoiler
   const spoilerGeometry = useMemo(() => {
     const geo = new THREE.BoxGeometry(
@@ -96,7 +127,7 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
       {/* Body - main hull */}
       <mesh geometry={bodyGeometry} castShadow receiveShadow>
         <meshPhysicalMaterial
-          color="#df3d4b"
+          color="#c91f3b"
           emissive="#2a0308"
           emissiveIntensity={0.2}
           metalness={0.72}
@@ -109,7 +140,7 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
       {/* Nose */}
       <mesh geometry={noseGeometry} castShadow receiveShadow>
         <meshPhysicalMaterial
-          color="#df3d4b"
+          color="#c91f3b"
           emissive="#2a0308"
           emissiveIntensity={0.2}
           metalness={0.72}
@@ -122,7 +153,7 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
       {/* Cabin */}
       <mesh geometry={cabinGeometry} castShadow>
         <meshPhysicalMaterial
-          color="#d53644"
+          color="#b81734"
           emissive="#260207"
           emissiveIntensity={0.18}
           metalness={0.68}
@@ -132,25 +163,28 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
         />
       </mesh>
 
-      {/* Windows - simple transparent boxes */}
-      <mesh
-        position={[g.cabin.center.x - 0.15, g.cabin.center.y + 0.15, 0]}
-        scale={[g.cabin.radii.x * 0.5, g.cabin.radii.y * 0.6, g.cabin.radii.z * 0.85]}
-        castShadow
-      >
-        <boxGeometry args={[1, 1, 1]} />
-        <meshPhysicalMaterial
-          color="#0b2029"
-          emissive="#07171d"
-          emissiveIntensity={0.34}
-          metalness={0.42}
-          roughness={0.08}
-          clearcoat={1}
-          clearcoatRoughness={0.08}
-          transparent
-          opacity={0.7}
-        />
-      </mesh>
+      {/* Side glass follows the cabin silhouette instead of floating as a box. */}
+      {[-1, 1].map((side) => (
+        <mesh key={`window-${side}`} geometry={windowGeometry} position={[0, 0, side * (g.cabin.radii.z + 0.012)]} renderOrder={3}>
+          <meshBasicMaterial color="#091a22" transparent opacity={0.88} side={THREE.DoubleSide} depthTest={false} />
+        </mesh>
+      ))}
+
+      {/* Thin B-pillar keeps the cabin readable at the side camera preset. */}
+      {[-1, 1].map((side) => (
+        <mesh key={`pillar-${side}`} position={[0.17, 0.97, side * (g.cabin.radii.z + 0.02)]} rotation={[0, 0, -0.04]}>
+          <boxGeometry args={[0.045, 0.31, 0.025]} />
+          <meshStandardMaterial color="#11181d" metalness={0.4} roughness={0.22} />
+        </mesh>
+      ))}
+
+      {/* Headlamps show the nose orientation and give the body a useful front reference. */}
+      {[-0.48, 0.48].map((z) => (
+        <mesh key={`headlamp-${z}`} position={[g.noseTipX + 0.22, 0.53, z]} scale={[0.16, 0.08, 0.12]}>
+          <sphereGeometry args={[1, 16, 10]} />
+          <meshStandardMaterial color="#fff0c7" emissive="#ffb766" emissiveIntensity={1.1} roughness={0.18} />
+        </mesh>
+      ))}
 
       {/* Spoiler */}
       <group position={[g.spoiler.center.x, g.spoiler.center.y, g.spoiler.center.z]} rotation={[0, 0, spoilerRotation]}>
@@ -184,13 +218,17 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
       {[-w.trackHalfWidth, w.trackHalfWidth].map((z) => (
         <group key={`wheel-front-${z}`} position={[w.frontAxleX, w.centerY, z]}>
           <Wheel radius={w.radius} width={w.width} />
-          <Hubcap radius={w.radius} />
+          <Hubcap radius={w.radius} offsetZ={w.width * 0.58} />
+          <Hubcap radius={w.radius} offsetZ={-w.width * 0.58} />
+          {z > 0 && <WheelFace radius={w.radius} hubRadius={w.hubRadius} offsetZ={w.width * 0.7} />}
         </group>
       ))}
       {[-w.trackHalfWidth, w.trackHalfWidth].map((z) => (
         <group key={`wheel-rear-${z}`} position={[w.rearAxleX, w.centerY, z]}>
           <Wheel radius={w.radius} width={w.width} />
-          <Hubcap radius={w.radius} />
+          <Hubcap radius={w.radius} offsetZ={w.width * 0.58} />
+          <Hubcap radius={w.radius} offsetZ={-w.width * 0.58} />
+          {z > 0 && <WheelFace radius={w.radius} hubRadius={w.hubRadius} offsetZ={w.width * 0.7} />}
         </group>
       ))}
 

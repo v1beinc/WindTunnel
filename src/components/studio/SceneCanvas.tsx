@@ -16,6 +16,11 @@ import {
 } from "@/lib/physics/flowField";
 import type { FlowMode, Overlays } from "@/lib/store";
 import { CAR_GEOMETRY } from "@/lib/flow/carGeometryProfile";
+import {
+  FLOW_VISUAL_SPEED_BASE,
+  FLOW_VISUAL_SPEED_PER_MPS,
+  FLOW_VISUAL_SPEED_MAX,
+} from "@/lib/flow/solverConstants";
 
 export type CameraPreset = "perspective" | "side";
 
@@ -174,10 +179,11 @@ function assignFlowColor(colors: Float32Array, cursor: number, wake: number, sta
   colors[cursor + 2] = blue;
 }
 
-function CpuParticleFlow({ object, yaw, speed, enabled, running, turbulenceStrength }: {
+function CpuParticleFlow({ object, yaw, speed, spoilerAngleDeg, enabled, running, turbulenceStrength }: {
   object: ObjectSpec;
   yaw: number;
   speed: number;
+  spoilerAngleDeg: number;
   enabled: boolean;
   running: boolean;
   turbulenceStrength: number;
@@ -185,7 +191,7 @@ function CpuParticleFlow({ object, yaw, speed, enabled, running, turbulenceStren
   const lines = useRef<THREE.LineSegments>(null);
   const points = useRef<THREE.Points>(null);
   const particleData = useMemo(() => {
-    const count = 980;
+    const count = 720;
     const particles = new Float32Array(count * 3);
     const pointPositions = new Float32Array(count * 3);
     const segmentPositions = new Float32Array(count * 6);
@@ -206,7 +212,9 @@ function CpuParticleFlow({ object, yaw, speed, enabled, running, turbulenceStren
 
   useFrame((state, delta) => {
     if (!lines.current || !points.current || !enabled || !running) return;
-    const movementSpeed = speed <= 0.01 ? 0 : 0.72 + Math.min(speed / 22, 3.15);
+    const movementSpeed = speed <= 0.01
+      ? 0
+      : Math.min(FLOW_VISUAL_SPEED_BASE + speed * FLOW_VISUAL_SPEED_PER_MPS, FLOW_VISUAL_SPEED_MAX);
     const frameDelta = Math.min(delta, 0.08);
     const elapsed = state.clock.elapsedTime;
 
@@ -218,12 +226,12 @@ function CpuParticleFlow({ object, yaw, speed, enabled, running, turbulenceStren
         y: particleData.particles[particleCursor + 1],
         z: particleData.particles[particleCursor + 2],
       };
-      const sample = sampleFlowField(current, object, yaw, elapsed, particleData.phases[index], turbulenceStrength);
+      const sample = sampleFlowField(current, object, yaw, elapsed, particleData.phases[index], turbulenceStrength, spoilerAngleDeg);
       let next = projectPointOutsideBody({
         x: current.x + sample.velocity.x * movementSpeed * frameDelta,
         y: current.y + sample.velocity.y * movementSpeed * frameDelta,
         z: current.z + sample.velocity.z * movementSpeed * frameDelta,
-      }, object, yaw, particleData.phases[index]);
+      }, object, yaw, particleData.phases[index], spoilerAngleDeg);
       const flowCoordinates = getFlowCoordinates(next, yaw);
 
       if (
@@ -271,13 +279,13 @@ function CpuParticleFlow({ object, yaw, speed, enabled, running, turbulenceStren
           <bufferAttribute attach="attributes-position" args={[particleData.segmentPositions, 3]} />
           <bufferAttribute attach="attributes-color" args={[particleData.colors, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.76} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <lineBasicMaterial vertexColors transparent opacity={0.58} depthWrite={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
       <points ref={points}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[particleData.pointPositions, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#c8f2ea" size={0.022} transparent opacity={0.56} depthWrite={false} />
+        <pointsMaterial color="#c8f2ea" size={0.018} transparent opacity={0.38} depthWrite={false} />
       </points>
     </group>
   );
@@ -569,9 +577,8 @@ function SceneContent({
             object={flowObject}
             yaw={yawAngleDeg}
             spoilerAngleDeg={spoilerAngleDeg}
-            enabled
+            enabled={flowMode === "streamlines"}
             turbulenceStrength={overlays.wake ? 1 : 0}
-            speed={metrics.effectiveWindSpeedMps}
           />
         </>
       )}
@@ -588,9 +595,8 @@ function SceneContent({
             object={flowObject}
             yaw={yawAngleDeg}
             spoilerAngleDeg={spoilerAngleDeg}
-            enabled
+            enabled={false}
             turbulenceStrength={overlays.wake ? 1 : 0}
-            speed={metrics.effectiveWindSpeedMps}
           />
           <GpuParticleFlow
             object={flowObject}
@@ -605,6 +611,7 @@ function SceneContent({
                 object={flowObject}
                 yaw={yawAngleDeg}
                 speed={metrics.effectiveWindSpeedMps}
+                spoilerAngleDeg={spoilerAngleDeg}
                 enabled
                 running={running}
                 turbulenceStrength={overlays.wake ? 1 : 0}

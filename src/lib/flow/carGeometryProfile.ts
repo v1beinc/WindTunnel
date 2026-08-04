@@ -60,45 +60,45 @@ export const CAR_GEOMETRY: CarGeometryProfile = {
   groundClearance: 0.12,
 
   body: {
-    center: { x: 0.0, y: 0.56, z: 0.0 },
-    radii: { x: 2.0, y: 0.38, z: 0.82 },
+    center: { x: 0.08, y: 0.48, z: 0.0 },
+    radii: { x: 1.75, y: 0.28, z: 0.75 },
   },
 
   nose: {
-    center: { x: -1.9, y: 0.56, z: 0.0 },
-    radii: { x: 0.6, y: 0.32, z: 0.78 },
+    center: { x: -1.75, y: 0.46, z: 0.0 },
+    radii: { x: 0.75, y: 0.26, z: 0.72 },
   },
 
   cabin: {
-    center: { x: 0.2, y: 1.05, z: 0.0 },
-    radii: { x: 1.0, y: 0.35, z: 0.68 },
+    center: { x: 0.22, y: 0.86, z: 0.0 },
+    radii: { x: 1.0, y: 0.34, z: 0.62 },
   },
 
   spoiler: {
-    center: { x: 1.55, y: 1.35, z: 0.0 },
-    halfSize: { x: 0.32, y: 0.05, z: 0.88 },
+    center: { x: 1.52, y: 1.28, z: 0.0 },
+    halfSize: { x: 0.34, y: 0.045, z: 0.86 },
     supports: {
-      left: { center: { x: 1.55, y: 1.15, z: 0.6 }, halfSize: { x: 0.045, y: 0.2, z: 0.05 } },
-      right: { center: { x: 1.55, y: 1.15, z: -0.6 }, halfSize: { x: 0.045, y: 0.2, z: 0.05 } },
+      left: { center: { x: 1.52, y: 1.08, z: 0.6 }, halfSize: { x: 0.045, y: 0.2, z: 0.05 } },
+      right: { center: { x: 1.52, y: 1.08, z: -0.6 }, halfSize: { x: 0.045, y: 0.2, z: 0.05 } },
     },
   },
 
   wheels: {
-    radius: 0.38,
-    width: 0.18,
-    frontAxleX: -1.3,
-    rearAxleX: 1.25,
-    trackHalfWidth: 0.85,
-    hubRadius: 0.22,
-    centerY: 0.26,
+    radius: 0.36,
+    width: 0.22,
+    frontAxleX: -1.28,
+    rearAxleX: 1.22,
+    trackHalfWidth: 0.84,
+    hubRadius: 0.20,
+    centerY: 0.40,
   },
 
   noseTipX: -2.5,
   tailX: 1.87,
-  topY: 1.40,
-  bottomY: 0.0,
-  leftZ: -0.93,
-  rightZ: 0.93,
+  topY: 1.33,
+  bottomY: 0.04,
+  leftZ: -0.95,
+  rightZ: 0.95,
 };
 
 // Helper to get all primitive definitions for SDF

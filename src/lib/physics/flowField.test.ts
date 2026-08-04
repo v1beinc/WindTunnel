@@ -14,10 +14,11 @@ const car = MODEL_CATALOG[0];
 
 describe("analytical flow field", () => {
   it("creates a stagnation zone in front of the object", () => {
-    const envelope = createFlowEnvelope(car, 0);
     const sample = sampleFlowField({
-      x: -envelope.halfLength - 0.12,
-      y: envelope.centerY,
+      // Keep the probe on the nose centerline so the test follows the
+      // reduced-order car profile rather than the generic envelope height.
+      x: CAR_GEOMETRY.noseTipX + 0.12,
+      y: CAR_GEOMETRY.nose.center.y,
       z: 0,
     }, car, 0, 0, Math.PI / 2);
 
@@ -135,5 +136,16 @@ describe("car geometry profile and SDF alignment", () => {
     expect(CAR_GEOMETRY.spoiler.supports.left.halfSize.x).toBe(0.045);
     expect(CAR_GEOMETRY.spoiler.supports.left.halfSize.y).toBe(0.2);
     expect(CAR_GEOMETRY.spoiler.supports.left.halfSize.z).toBe(0.05);
+  });
+
+  it("keeps the visible wheels on the ground and the car envelope profile-aligned", () => {
+    expect(CAR_GEOMETRY.wheels.centerY - CAR_GEOMETRY.wheels.radius).toBeCloseTo(CAR_GEOMETRY.bottomY, 2);
+
+    const envelope = createFlowEnvelope(car, 0);
+    expect(envelope.centerY).toBeCloseTo((CAR_GEOMETRY.topY + CAR_GEOMETRY.bottomY) * 0.5, 2);
+    expect(envelope.halfLength).toBeCloseTo(
+      (CAR_GEOMETRY.tailX - CAR_GEOMETRY.noseTipX) * 0.5,
+      2,
+    );
   });
 });

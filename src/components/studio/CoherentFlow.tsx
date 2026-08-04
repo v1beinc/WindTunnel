@@ -6,11 +6,11 @@ import * as THREE from "three";
 import { createStreamline, sampleFlowField, type StreamlineSeed, type FlowPoint } from "@/lib/physics/flowField";
 import type { ObjectSpec } from "@/lib/physics/aerodynamics";
 
-const COHERENT_SEEDS: StreamlineSeed[] = Array.from({ length: 48 }, (_, index) => {
+const COHERENT_SEEDS: StreamlineSeed[] = Array.from({ length: 40 }, (_, index) => {
   const lane = Math.floor(index / 8);
   const layer = index % 8;
   return {
-    lateral: -2.8 + lane * 0.8,
+    lateral: -2.8 + lane * 1.4,
     height: 0.15 + layer * 0.32,
     phase: 0.15 + index * 0.38,
   };
@@ -41,7 +41,6 @@ interface CoherentStreamlinesProps {
   spoilerAngleDeg: number;
   enabled: boolean;
   turbulenceStrength: number;
-  speed: number;
 }
 
 function getFlowColor(speedRatio: number, wakeIntensity: number, stagnationIntensity: number): THREE.Color {
@@ -67,7 +66,6 @@ export function CoherentStreamlines({
   spoilerAngleDeg,
   enabled,
   turbulenceStrength,
-  speed,
 }: CoherentStreamlinesProps) {
   const geometry = useMemo(() => {
     const allSegments: Array<{ p1: FlowPoint; p2: FlowPoint; mid: FlowPoint }> = [];
@@ -92,8 +90,9 @@ export function CoherentStreamlines({
       const sample = sampleFlowField(seg.mid, object, yaw, 0, 0, turbulenceStrength, spoilerAngleDeg);
       
       // Use actual speed for speedRatio calculation
-      const refSpeed = Math.max(0.001, speed);
-      const speedRatio = Math.min(Math.hypot(sample.velocity.x, sample.velocity.y, sample.velocity.z) / refSpeed, 2.0);
+      // sampleFlowField returns a dimensionless local velocity ratio. Comparing
+      // it to the real-world m/s value makes every line look slow at road speed.
+      const speedRatio = Math.min(Math.hypot(sample.velocity.x, sample.velocity.y, sample.velocity.z), 2.0);
       const wakeIntensity = sample.wakeIntensity;
       const stagnationIntensity = sample.stagnationIntensity;
       
@@ -117,7 +116,7 @@ export function CoherentStreamlines({
     geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
     
     return geometry;
-  }, [object, yaw, spoilerAngleDeg, turbulenceStrength, speed]);
+  }, [object, yaw, spoilerAngleDeg, turbulenceStrength]);
 
   if (!enabled) return null;
 
@@ -126,7 +125,7 @@ export function CoherentStreamlines({
       <lineBasicMaterial 
         vertexColors 
         transparent 
-        opacity={0.65} 
+        opacity={0.48}
         depthWrite={false} 
         blending={THREE.AdditiveBlending} 
       />

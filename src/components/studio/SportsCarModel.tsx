@@ -111,13 +111,25 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
     return new THREE.ShapeGeometry(shape);
   }, []);
 
-  // Spoiler
+  // A thin airfoil section makes the rear wing read as an actual adjustable
+  // surface. Its complete envelope stays inside CAR_GEOMETRY.spoiler, so the
+  // visual pivot and the solver's collision profile remain the same object.
   const spoilerGeometry = useMemo(() => {
-    const geo = new THREE.BoxGeometry(
-      g.spoiler.halfSize.x * 2,
-      g.spoiler.halfSize.y * 2,
-      g.spoiler.halfSize.z * 2
-    );
+    const section = new THREE.Shape();
+    section.moveTo(-g.spoiler.halfSize.x, -g.spoiler.halfSize.y * 0.35);
+    section.lineTo(g.spoiler.halfSize.x * 0.72, -g.spoiler.halfSize.y);
+    section.lineTo(g.spoiler.halfSize.x, 0);
+    section.lineTo(g.spoiler.halfSize.x * 0.72, g.spoiler.halfSize.y);
+    section.lineTo(-g.spoiler.halfSize.x, g.spoiler.halfSize.y * 0.35);
+    section.closePath();
+    const geo = new THREE.ExtrudeGeometry(section, {
+      depth: g.spoiler.halfSize.z * 2,
+      bevelEnabled: false,
+      curveSegments: 2,
+      steps: 1,
+    });
+    geo.translate(0, 0, -g.spoiler.halfSize.z);
+    geo.computeVertexNormals();
     return geo;
   }, [g.spoiler.halfSize.x, g.spoiler.halfSize.y, g.spoiler.halfSize.z]);
 
@@ -137,12 +149,12 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
       <mesh geometry={shellGeometry} castShadow receiveShadow>
         <meshPhysicalMaterial
           color="#c91f3b"
-          emissive="#2a0308"
-          emissiveIntensity={0.2}
-          metalness={0.72}
-          roughness={0.22}
-          clearcoat={1}
-          clearcoatRoughness={0.12}
+          emissive="#180207"
+          emissiveIntensity={0.12}
+          metalness={0.46}
+          roughness={0.30}
+          clearcoat={0.72}
+          clearcoatRoughness={0.18}
         />
       </mesh>
 

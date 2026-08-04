@@ -1,26 +1,18 @@
-import { Component, Suspense, useEffect, useMemo, useRef } from "react";
+import { Component, Suspense, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import { ContactShadows, OrbitControls, PerspectiveCamera, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { GpuParticleFlow } from "@/components/studio/GpuParticleFlow";
+import { RebuildParticleFlow, RebuildStreamlines } from "@/components/studio/RebuildFlow";
 import { SportsCarModel } from "@/components/studio/SportsCarModel";
-import { CoherentStreamlines, CoherentRibbons } from "@/components/studio/CoherentFlow";
 import type { ObjectSpec, SimulationMetrics } from "@/lib/physics/aerodynamics";
 import {
   createFlowEnvelope,
   createFlowPoint,
-  getFlowCoordinates,
-  projectPointOutsideBody,
-  sampleFlowField,
 } from "@/lib/physics/flowField";
 import type { FlowMode, Overlays } from "@/lib/store";
 import { CAR_GEOMETRY } from "@/lib/flow/carGeometryProfile";
-import {
-  FLOW_VISUAL_SPEED_BASE,
-  FLOW_VISUAL_SPEED_PER_MPS,
-  FLOW_VISUAL_SPEED_MAX,
-} from "@/lib/flow/solverConstants";
+import { getRebuildFlowCoordinates, sampleRebuildFlowField } from "@/lib/flow/rebuildSolver";
 
 export type CameraPreset = "perspective" | "side";
 
@@ -157,140 +149,6 @@ function ModelErrorMarker() {
   );
 }
 
-function assignFlowColor(colors: Float32Array, cursor: number, wake: number, stagnation: number, speedRatio: number) {
-  let red = 0.46;
-  let green = 0.82;
-  let blue = 0.79;
-  if (wake > 0.2) {
-    red = 0.58;
-    green = 0.46;
-    blue = 0.92;
-  } else if (stagnation > 0.28) {
-    red = 1;
-    green = 0.68;
-    blue = 0.32;
-  } else if (speedRatio > 1.08) {
-    red = 0.38;
-    green = 1;
-    blue = 0.83;
-  }
-  colors[cursor] = red;
-  colors[cursor + 1] = green;
-  colors[cursor + 2] = blue;
-}
-
-function CpuParticleFlow({ object, yaw, speed, spoilerAngleDeg, enabled, running, turbulenceStrength }: {
-  object: ObjectSpec;
-  yaw: number;
-  speed: number;
-  spoilerAngleDeg: number;
-  enabled: boolean;
-  running: boolean;
-  turbulenceStrength: number;
-}) {
-  const lines = useRef<THREE.LineSegments>(null);
-  const points = useRef<THREE.Points>(null);
-  const particleData = useMemo(() => {
-    const count = 720;
-    const particles = new Float32Array(count * 3);
-    const pointPositions = new Float32Array(count * 3);
-    const segmentPositions = new Float32Array(count * 6);
-    const colors = new Float32Array(count * 6);
-    const phases = new Float32Array(count);
-    for (let index = 0; index < count; index += 1) {
-      const streamwise = -7.1 + pseudoRandom(index + 1) * 14.2;
-      const lateral = -3.2 + pseudoRandom(index + 101) * 6.4;
-      const height = 0.08 + pseudoRandom(index + 201) * 3.05;
-      const point = createFlowPoint(streamwise, lateral, height, yaw);
-      particles.set([point.x, point.y, point.z], index * 3);
-      pointPositions.set([point.x, point.y, point.z], index * 3);
-      segmentPositions.set([point.x, point.y, point.z, point.x, point.y, point.z], index * 6);
-      phases[index] = pseudoRandom(index + 301) * Math.PI * 2;
-    }
-    return { count, particles, pointPositions, segmentPositions, colors, phases };
-  }, [yaw]);
-
-  useFrame((state, delta) => {
-    if (!lines.current || !points.current || !enabled || !running) return;
-    const movementSpeed = speed <= 0.01
-      ? 0
-      : Math.min(FLOW_VISUAL_SPEED_BASE + speed * FLOW_VISUAL_SPEED_PER_MPS, FLOW_VISUAL_SPEED_MAX);
-    const frameDelta = Math.min(delta, 0.08);
-    const elapsed = state.clock.elapsedTime;
-
-    for (let index = 0; index < particleData.count; index += 1) {
-      const particleCursor = index * 3;
-      const segmentCursor = index * 6;
-      const current = {
-        x: particleData.particles[particleCursor],
-        y: particleData.particles[particleCursor + 1],
-        z: particleData.particles[particleCursor + 2],
-      };
-      const sample = sampleFlowField(current, object, yaw, elapsed, particleData.phases[index], turbulenceStrength, spoilerAngleDeg);
-      let next = projectPointOutsideBody({
-        x: current.x + sample.velocity.x * movementSpeed * frameDelta,
-        y: current.y + sample.velocity.y * movementSpeed * frameDelta,
-        z: current.z + sample.velocity.z * movementSpeed * frameDelta,
-      }, object, yaw, particleData.phases[index], spoilerAngleDeg);
-      const flowCoordinates = getFlowCoordinates(next, yaw);
-
-      if (
-        flowCoordinates.streamwise > 7.25
-        || Math.abs(flowCoordinates.lateral) > 3.65
-        || next.y < 0.055
-        || next.y > 3.25
-      ) {
-        const resetLateral = -3.2 + pseudoRandom(index + 401) * 6.4;
-        const resetHeight = 0.08 + pseudoRandom(index + 501) * 3.02;
-        next = createFlowPoint(-7.15, resetLateral, resetHeight, yaw);
-      }
-
-      particleData.particles.set([next.x, next.y, next.z], particleCursor);
-      particleData.pointPositions.set([next.x, next.y, next.z], particleCursor);
-      const velocityMagnitude = Math.max(
-        Math.sqrt(sample.velocity.x ** 2 + sample.velocity.y ** 2 + sample.velocity.z ** 2),
-        0.01,
-      );
-      const trailLength = 0.1 + movementSpeed * 0.045;
-      particleData.segmentPositions.set([
-        next.x - (sample.velocity.x / velocityMagnitude) * trailLength,
-        next.y - (sample.velocity.y / velocityMagnitude) * trailLength,
-        next.z - (sample.velocity.z / velocityMagnitude) * trailLength,
-        next.x,
-        next.y,
-        next.z,
-      ], segmentCursor);
-      assignFlowColor(particleData.colors, segmentCursor, sample.wakeIntensity, sample.stagnationIntensity, sample.speedRatio);
-      assignFlowColor(particleData.colors, segmentCursor + 3, sample.wakeIntensity, sample.stagnationIntensity, sample.speedRatio);
-    }
-
-    const linePosition = lines.current.geometry.getAttribute("position") as THREE.BufferAttribute;
-    const lineColor = lines.current.geometry.getAttribute("color") as THREE.BufferAttribute;
-    const pointPosition = points.current.geometry.getAttribute("position") as THREE.BufferAttribute;
-    linePosition.needsUpdate = true;
-    lineColor.needsUpdate = true;
-    pointPosition.needsUpdate = true;
-  });
-
-  return (
-    <group visible={enabled}>
-      <lineSegments ref={lines}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[particleData.segmentPositions, 3]} />
-          <bufferAttribute attach="attributes-color" args={[particleData.colors, 3]} />
-        </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.58} depthWrite={false} blending={THREE.AdditiveBlending} />
-      </lineSegments>
-      <points ref={points}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[particleData.pointPositions, 3]} />
-        </bufferGeometry>
-        <pointsMaterial color="#c8f2ea" size={0.018} transparent opacity={0.38} depthWrite={false} />
-      </points>
-    </group>
-  );
-}
-
 function PressureField({ object, yaw, intensity, enabled }: {
   object: ObjectSpec;
   yaw: number;
@@ -371,18 +229,31 @@ function PressureField({ object, yaw, intensity, enabled }: {
   );
 }
 
-function VelocityGlyphs({ object, yaw, enabled }: { object: ObjectSpec; yaw: number; enabled: boolean }) {
+function VelocityGlyphs({ object, yaw, speed, spoilerAngleDeg, enabled }: {
+  object: ObjectSpec;
+  yaw: number;
+  speed: number;
+  spoilerAngleDeg: number;
+  enabled: boolean;
+}) {
   const geometry = useMemo(() => {
     const positions: number[] = [];
     const colors: number[] = [];
     const envelope = createFlowEnvelope(object, yaw);
+    const solverConfig = {
+      object,
+      yawAngleDeg: yaw,
+      speedMps: speed,
+      spoilerAngleDeg,
+      turbulenceStrength: 1,
+    };
     const color = new THREE.Color();
 
     for (let x = -5.8; x <= 5.8; x += 0.72) {
       for (let y = 0.28; y <= 2.9; y += 0.52) {
         for (let lateral = -2.7; lateral <= 2.7; lateral += 0.78) {
           const start = createFlowPoint(x, lateral, y, yaw);
-          const local = getFlowCoordinates(start, yaw);
+          const local = getRebuildFlowCoordinates(start, yaw);
           const bodyX = local.streamwise / envelope.halfLength;
           const bodyRadius = Math.sqrt(Math.max(0, 1 - bodyX ** 2));
           const radial = Math.sqrt(
@@ -391,7 +262,7 @@ function VelocityGlyphs({ object, yaw, enabled }: { object: ObjectSpec; yaw: num
           );
           if (Math.abs(bodyX) < 1.02 && radial < bodyRadius + 0.13) continue;
 
-          const sample = sampleFlowField(start, object, yaw, 0, x + y + lateral, 0.35);
+          const sample = sampleRebuildFlowField(start, solverConfig, 0, x + y + lateral, Math.sign(y - envelope.centerY) || 1);
           const magnitude = Math.max(Math.hypot(sample.velocity.x, sample.velocity.y, sample.velocity.z), 0.04);
           const length = 0.14 + sample.speedRatio * 0.16;
           positions.push(
@@ -413,7 +284,7 @@ function VelocityGlyphs({ object, yaw, enabled }: { object: ObjectSpec; yaw: num
     }
 
     return { positions: new Float32Array(positions), colors: new Float32Array(colors) };
-  }, [object, yaw]);
+  }, [object, yaw, speed, spoilerAngleDeg]);
 
   return (
     <lineSegments visible={enabled}>
@@ -565,65 +436,39 @@ function SceneContent({
       <directionalLight position={[-4, 3, -3]} intensity={1.4} color="#75aeb9" />
       <TunnelShell />
       {flowMode === "streamlines" && (
-        <>
-          <CoherentRibbons
-            object={flowObject}
-            yaw={yawAngleDeg}
-            spoilerAngleDeg={spoilerAngleDeg}
-            enabled
-            speed={metrics.effectiveWindSpeedMps}
-          />
-          <CoherentStreamlines
-            object={flowObject}
-            yaw={yawAngleDeg}
-            spoilerAngleDeg={spoilerAngleDeg}
-            enabled={flowMode === "streamlines"}
-            turbulenceStrength={overlays.wake ? 1 : 0}
-          />
-        </>
+        <RebuildStreamlines
+          object={flowObject}
+          yaw={yawAngleDeg}
+          speed={metrics.effectiveWindSpeedMps}
+          spoilerAngleDeg={spoilerAngleDeg}
+          enabled
+          running={running}
+          turbulenceStrength={overlays.wake ? 1 : 0.35}
+        />
       )}
       {flowMode === "particles" && (
-        <>
-          <CoherentRibbons
-            object={flowObject}
-            yaw={yawAngleDeg}
-            spoilerAngleDeg={spoilerAngleDeg}
-            enabled={false}
-            speed={metrics.effectiveWindSpeedMps}
-          />
-          <CoherentStreamlines
-            object={flowObject}
-            yaw={yawAngleDeg}
-            spoilerAngleDeg={spoilerAngleDeg}
-            enabled={false}
-            turbulenceStrength={overlays.wake ? 1 : 0}
-          />
-          <GpuParticleFlow
-            object={flowObject}
-            yaw={yawAngleDeg}
-            speed={metrics.effectiveWindSpeedMps}
-            spoilerAngleDeg={spoilerAngleDeg}
-            enabled
-            running={running}
-            turbulenceStrength={overlays.wake ? 1 : 0}
-            fallback={(
-              <CpuParticleFlow
-                object={flowObject}
-                yaw={yawAngleDeg}
-                speed={metrics.effectiveWindSpeedMps}
-                spoilerAngleDeg={spoilerAngleDeg}
-                enabled
-                running={running}
-                turbulenceStrength={overlays.wake ? 1 : 0}
-              />
-            )}
-          />
-        </>
+        <RebuildParticleFlow
+          object={flowObject}
+          yaw={yawAngleDeg}
+          speed={metrics.effectiveWindSpeedMps}
+          spoilerAngleDeg={spoilerAngleDeg}
+          enabled
+          running={running}
+          turbulenceStrength={overlays.wake ? 1 : 0.35}
+        />
       )}
       {flowMode === "pressure" && (
         <PressureField object={flowObject} yaw={yawAngleDeg} intensity={intensity} enabled />
       )}
-      {flowMode === "velocity" && <VelocityGlyphs object={flowObject} yaw={yawAngleDeg} enabled />}
+      {flowMode === "velocity" && (
+        <VelocityGlyphs
+          object={flowObject}
+          yaw={yawAngleDeg}
+          speed={metrics.effectiveWindSpeedMps}
+          spoilerAngleDeg={spoilerAngleDeg}
+          enabled
+        />
+      )}
       <WindVector enabled yaw={yawAngleDeg} />
       <ModelErrorBoundary resetKey={uploadedUrl} onError={onModelError}>
         <Suspense fallback={<ModelLoadingMarker />}>

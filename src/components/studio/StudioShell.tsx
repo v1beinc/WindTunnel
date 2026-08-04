@@ -227,7 +227,7 @@ export function StudioShell() {
               <div className="brand-subtitle">aerodynamic lab / v1.3</div>
             </div>
           </div>
-          <div className="topbar-center"><span className={`live-dot${running ? "" : " is-paused"}`} /> {running ? "live GPU SDF simulation" : "simulation paused"}</div>
+          <div className="topbar-center"><span className={`live-dot${running ? "" : " is-paused"}`} /> {running ? "live 2.5D reduced-order flow" : "simulation paused"}</div>
           <div className="topbar-actions">
             <span className="status-chip"><span className="live-dot" /> guest session</span>
             <button className="subtle-button" type="button" onClick={() => setUnit(unit === "metric" ? "imperial" : "metric")}>
@@ -237,7 +237,7 @@ export function StudioShell() {
             {showHelp && (
               <div className="help-popover" role="dialog" aria-label="About the flow model">
                 <strong>Interactive reduced-order wind tunnel</strong>
-                <span>GPU particle advection uses a fixed 120 Hz solver and an SDF collision model for the car body, cabin and rear wing. Other views sample the matching reduced-order CPU field.</span>
+                <span>Particles and streamlines use one inlet-seeded 2.5D reduced-order field with bounded RK2 advection. It is an educational visualization, not engineering CFD.</span>
               </div>
             )}
           </div>
@@ -300,7 +300,7 @@ export function StudioShell() {
               <div className="secondary-toggle">
                 <Toggle icon={Waves} label="Turbulent wake" active={overlays.wake} onClick={() => setOverlay("wake")} />
               </div>
-              <div className="solver-note"><span className="live-dot" /> {flowMode === "particles" ? "GPU advection · 9.2K tracers · 120 Hz" : `${FLOW_MODE_LABELS[flowMode]} active`}</div>
+              <div className="solver-note"><span className="live-dot" /> {flowMode === "particles" ? "RK2 field · 1.2K inlet tracers" : `${FLOW_MODE_LABELS[flowMode]} active`}</div>
             </div>
           </aside>
 

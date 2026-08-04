@@ -139,6 +139,7 @@ interface CoherentRibbonsProps {
   yaw: number;
   spoilerAngleDeg: number;
   enabled: boolean;
+  speed: number;
 }
 
 export function CoherentRibbons({
@@ -146,23 +147,29 @@ export function CoherentRibbons({
   yaw,
   spoilerAngleDeg,
   enabled,
+  speed,
 }: CoherentRibbonsProps) {
   const ribbons = useMemo(() => {
     return COHERENT_RIBBON_SEEDS.map((seed) => ({
       id: `${seed.lateral}-${seed.height}-${seed.phase}`,
       points: createStreamline(object, yaw, seed, 120, 0.15, spoilerAngleDeg).map((point) => [point.x, point.y, point.z] as [number, number, number]),
     }));
-  }, [object, yaw, spoilerAngleDeg]);
+  }, [object, yaw, spoilerAngleDeg, speed]);
 
   if (!enabled) return null;
+
+  // Adjust opacity based on speed - higher speed = more visible ribbons
+  const baseOpacity = Math.min(0.02 + speed * 0.001, 0.05);
+  const midOpacity = Math.min(0.05 + speed * 0.002, 0.08);
+  const highOpacity = Math.min(0.35 + speed * 0.005, 0.5);
 
   return (
     <group visible={enabled}>
       {ribbons.map((ribbon) => (
         <group key={ribbon.id}>
-          <Line points={ribbon.points} color="#d9ebe7" lineWidth={5} transparent opacity={0.02} depthWrite={false} />
-          <Line points={ribbon.points} color="#d8ece8" lineWidth={2.5} transparent opacity={0.05} depthWrite={false} />
-          <Line points={ribbon.points} color="#f0f7f4" lineWidth={1} transparent opacity={0.35} depthWrite={false} />
+          <Line points={ribbon.points} color="#d9ebe7" lineWidth={5} transparent opacity={baseOpacity} depthWrite={false} />
+          <Line points={ribbon.points} color="#d8ece8" lineWidth={2.5} transparent opacity={midOpacity} depthWrite={false} />
+          <Line points={ribbon.points} color="#f0f7f4" lineWidth={1} transparent opacity={highOpacity} depthWrite={false} />
         </group>
       ))}
     </group>

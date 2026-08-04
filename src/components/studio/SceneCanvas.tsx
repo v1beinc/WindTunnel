@@ -647,6 +647,7 @@ function SceneContent({
             yaw={yawAngleDeg}
             spoilerAngleDeg={spoilerAngleDeg}
             enabled
+            speed={metrics.effectiveWindSpeedMps}
           />
           <CoherentStreamlines
             object={flowObject}
@@ -665,6 +666,7 @@ function SceneContent({
             yaw={yawAngleDeg}
             spoilerAngleDeg={spoilerAngleDeg}
             enabled
+            speed={metrics.effectiveWindSpeedMps}
           />
           <CoherentStreamlines
             object={flowObject}

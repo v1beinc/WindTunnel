@@ -1,9 +1,7 @@
-"use client";
-
 import { Component, Suspense, useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { ContactShadows, Line, OrbitControls, PerspectiveCamera, useGLTF } from "@react-three/drei";
+import { ContactShadows, OrbitControls, PerspectiveCamera, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { GpuParticleFlow } from "@/components/studio/GpuParticleFlow";
 import { SportsCarModel } from "@/components/studio/SportsCarModel";
@@ -12,11 +10,9 @@ import type { ObjectSpec, SimulationMetrics } from "@/lib/physics/aerodynamics";
 import {
   createFlowEnvelope,
   createFlowPoint,
-  createStreamline,
   getFlowCoordinates,
   projectPointOutsideBody,
   sampleFlowField,
-  type StreamlineSeed,
 } from "@/lib/physics/flowField";
 import type { FlowMode, Overlays } from "@/lib/store";
 import { CAR_GEOMETRY } from "@/lib/flow/carGeometryProfile";
@@ -46,28 +42,6 @@ type ModelErrorBoundaryProps = {
 type ModelErrorBoundaryState = {
   error: string | null;
 };
-
-const STREAMLINE_SEEDS: StreamlineSeed[] = Array.from({ length: 54 }, (_, index) => {
-  const lane = Math.floor(index / 9);
-  const layer = index % 9;
-  return {
-    lateral: -2.35 + lane * 0.94,
-    height: 0.16 + layer * 0.31,
-    phase: 0.2 + index * 0.47,
-  };
-});
-
-const RIBBON_SEEDS: StreamlineSeed[] = [
-  { lateral: -0.42, height: 0.2, phase: 0.3 },
-  { lateral: 0.18, height: 0.36, phase: 0.9 },
-  { lateral: -0.18, height: 0.58, phase: 1.5 },
-  { lateral: 0.28, height: 0.82, phase: 2.1 },
-  { lateral: -0.28, height: 1.08, phase: 2.7 },
-  { lateral: 0.16, height: 1.38, phase: 3.4 },
-  { lateral: -0.16, height: 1.72, phase: 4.1 },
-  { lateral: 0.24, height: 2.08, phase: 4.8 },
-  { lateral: -0.24, height: 2.48, phase: 5.5 },
-];
 
 function pseudoRandom(seed: number) {
   const value = Math.sin(seed * 12.9898) * 43758.5453;
@@ -305,64 +279,6 @@ function CpuParticleFlow({ object, yaw, speed, enabled, running, turbulenceStren
         </bufferGeometry>
         <pointsMaterial color="#c8f2ea" size={0.022} transparent opacity={0.56} depthWrite={false} />
       </points>
-    </group>
-  );
-}
-
-function Streamlines({ object, yaw, spoilerAngleDeg, enabled }: {
-  object: ObjectSpec;
-  yaw: number;
-  spoilerAngleDeg: number;
-  enabled: boolean;
-}) {
-  const geometry = useMemo(() => {
-    const positions: number[] = [];
-    const colors: number[] = [];
-    for (const seed of STREAMLINE_SEEDS) {
-      const points = createStreamline(object, yaw, seed, 92, 0.16, spoilerAngleDeg);
-      for (let index = 0; index < points.length - 1; index += 1) {
-        const first = points[index];
-        const second = points[index + 1];
-        positions.push(first.x, first.y, first.z, second.x, second.y, second.z);
-        const sample = sampleFlowField(first, object, yaw, 0, seed.phase, 1, spoilerAngleDeg);
-        const color = sample.wakeIntensity > 0.22 ? [0.46, 0.38, 0.72] : [0.31, 0.58, 0.61];
-        colors.push(...color, ...color);
-      }
-    }
-    return { positions: new Float32Array(positions), colors: new Float32Array(colors) };
-  }, [object, spoilerAngleDeg, yaw]);
-
-  return (
-    <lineSegments visible={enabled}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[geometry.positions, 3]} />
-        <bufferAttribute attach="attributes-color" args={[geometry.colors, 3]} />
-      </bufferGeometry>
-      <lineBasicMaterial vertexColors transparent opacity={0.5} depthWrite={false} />
-    </lineSegments>
-  );
-}
-
-function SmokeRibbons({ object, yaw, spoilerAngleDeg, enabled }: {
-  object: ObjectSpec;
-  yaw: number;
-  spoilerAngleDeg: number;
-  enabled: boolean;
-}) {
-  const ribbons = useMemo(() => RIBBON_SEEDS.map((seed) => ({
-    id: `${seed.lateral}-${seed.height}-${seed.phase}`,
-    points: createStreamline(object, yaw, seed, 96, 0.16, spoilerAngleDeg).map((point) => [point.x, point.y, point.z] as [number, number, number]),
-  })), [object, spoilerAngleDeg, yaw]);
-
-  return (
-    <group visible={enabled}>
-      {ribbons.map((ribbon) => (
-        <group key={ribbon.id}>
-          <Line points={ribbon.points} color="#d9ebe7" lineWidth={7} transparent opacity={0.025} depthWrite={false} />
-          <Line points={ribbon.points} color="#d8ece8" lineWidth={3} transparent opacity={0.07} depthWrite={false} />
-          <Line points={ribbon.points} color="#f0f7f4" lineWidth={1.15} transparent opacity={0.42} depthWrite={false} />
-        </group>
-      ))}
     </group>
   );
 }

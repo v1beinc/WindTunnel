@@ -154,7 +154,7 @@ export function CoherentRibbons({
       id: `${seed.lateral}-${seed.height}-${seed.phase}`,
       points: createStreamline(object, yaw, seed, 120, 0.15, spoilerAngleDeg).map((point) => [point.x, point.y, point.z] as [number, number, number]),
     }));
-  }, [object, yaw, spoilerAngleDeg, speed]);
+  }, [object, yaw, spoilerAngleDeg]);
 
   if (!enabled) return null;
 

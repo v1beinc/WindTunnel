@@ -44,18 +44,18 @@ function Hubcap({ radius, offsetZ }: { radius: number; offsetZ: number }) {
 
 function WheelFace({ radius, hubRadius, offsetZ }: { radius: number; hubRadius: number; offsetZ: number }) {
   return (
-    <group position={[0, 0, offsetZ]} renderOrder={4}>
+    <group position={[0, 0, offsetZ]}>
       <mesh renderOrder={4}>
         <circleGeometry args={[radius, 32]} />
-        <meshBasicMaterial color="#050708" side={THREE.DoubleSide} depthTest={false} />
+        <meshBasicMaterial color="#050708" side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[0, 0, 0.006]} renderOrder={5}>
         <circleGeometry args={[hubRadius, 24]} />
-        <meshBasicMaterial color="#829398" side={THREE.DoubleSide} depthTest={false} />
+        <meshBasicMaterial color="#607176" side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[0, 0, 0.012]} renderOrder={6}>
         <circleGeometry args={[hubRadius * 0.22, 20]} />
-        <meshBasicMaterial color="#11181d" side={THREE.DoubleSide} depthTest={false} />
+        <meshBasicMaterial color="#11181d" side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
@@ -65,30 +65,39 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
   const spoilerRotation = -(spoilerAngleDeg * Math.PI) / 180;
   const g = CAR_GEOMETRY;
   const w = g.wheels;
+  const shellHalfWidth = g.width * 0.48;
 
-  // Simple body - elongated ellipsoid
-  const bodyGeometry = useMemo(() => {
-    const geo = new THREE.SphereGeometry(1, 32, 20);
-    geo.scale(g.body.radii.x * 2, g.body.radii.y * 2, g.body.radii.z * 2);
-    geo.translate(g.body.center.x, g.body.center.y, g.body.center.z);
+  // One beveled side-profile extrusion keeps the body visually continuous.
+  // The same lower envelope is represented by CAR_GEOMETRY.chassis in the SDF.
+  const shellGeometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.moveTo(-2.48, 0.16);
+    shape.lineTo(-2.38, 0.31);
+    shape.lineTo(-1.82, 0.55);
+    shape.lineTo(-0.96, 0.63);
+    shape.lineTo(-0.44, 0.76);
+    shape.lineTo(-0.05, 1.10);
+    shape.lineTo(0.40, 1.17);
+    shape.lineTo(0.82, 1.08);
+    shape.lineTo(1.12, 0.90);
+    shape.lineTo(1.42, 0.71);
+    shape.lineTo(1.86, 0.56);
+    shape.lineTo(1.88, 0.20);
+    shape.lineTo(-2.48, 0.16);
+    shape.closePath();
+    const geo = new THREE.ExtrudeGeometry(shape, {
+      depth: shellHalfWidth * 2,
+      bevelEnabled: true,
+      bevelThickness: 0.055,
+      bevelSize: 0.045,
+      bevelSegments: 2,
+      curveSegments: 3,
+      steps: 1,
+    });
+    geo.translate(0, 0, -shellHalfWidth);
+    geo.computeVertexNormals();
     return geo;
-  }, [g.body.center.x, g.body.center.y, g.body.center.z, g.body.radii.x, g.body.radii.y, g.body.radii.z]);
-
-  // Nose - front ellipsoid
-  const noseGeometry = useMemo(() => {
-    const geo = new THREE.SphereGeometry(1, 24, 16);
-    geo.scale(g.nose.radii.x * 2, g.nose.radii.y * 2, g.nose.radii.z * 2);
-    geo.translate(g.nose.center.x, g.nose.center.y, g.nose.center.z);
-    return geo;
-  }, [g.nose.center.x, g.nose.center.y, g.nose.center.z, g.nose.radii.x, g.nose.radii.y, g.nose.radii.z]);
-
-  // Cabin - upper ellipsoid
-  const cabinGeometry = useMemo(() => {
-    const geo = new THREE.SphereGeometry(1, 24, 16);
-    geo.scale(g.cabin.radii.x * 2, g.cabin.radii.y * 2, g.cabin.radii.z * 2);
-    geo.translate(g.cabin.center.x, g.cabin.center.y, g.cabin.center.z);
-    return geo;
-  }, [g.cabin.center.x, g.cabin.center.y, g.cabin.center.z, g.cabin.radii.x, g.cabin.radii.y, g.cabin.radii.z]);
+  }, [shellHalfWidth]);
 
   const windowGeometry = useMemo(() => {
     const shape = new THREE.Shape();
@@ -124,8 +133,8 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
 
   return (
     <group position={[0, 0.015, 0]}>
-      {/* Body - main hull */}
-      <mesh geometry={bodyGeometry} castShadow receiveShadow>
+      {/* Unified low-poly body shell */}
+      <mesh geometry={shellGeometry} castShadow receiveShadow>
         <meshPhysicalMaterial
           color="#c91f3b"
           emissive="#2a0308"
@@ -137,52 +146,26 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
         />
       </mesh>
 
-      {/* Nose */}
-      <mesh geometry={noseGeometry} castShadow receiveShadow>
-        <meshPhysicalMaterial
-          color="#c91f3b"
-          emissive="#2a0308"
-          emissiveIntensity={0.2}
-          metalness={0.72}
-          roughness={0.22}
-          clearcoat={1}
-          clearcoatRoughness={0.12}
-        />
-      </mesh>
-
-      {/* Cabin */}
-      <mesh geometry={cabinGeometry} castShadow>
-        <meshPhysicalMaterial
-          color="#b81734"
-          emissive="#260207"
-          emissiveIntensity={0.18}
-          metalness={0.68}
-          roughness={0.2}
-          clearcoat={1}
-          clearcoatRoughness={0.1}
-        />
-      </mesh>
-
-      {/* Side glass follows the cabin silhouette instead of floating as a box. */}
+      {/* Side glass is placed on the actual shell side, not on the old cabin ellipsoid. */}
       {[-1, 1].map((side) => (
-        <mesh key={`window-${side}`} geometry={windowGeometry} position={[0, 0, side * (g.cabin.radii.z + 0.012)]} renderOrder={3}>
-          <meshBasicMaterial color="#091a22" transparent opacity={0.88} side={THREE.DoubleSide} depthTest={false} />
+        <mesh key={`window-${side}`} geometry={windowGeometry} position={[0, 0, side * (shellHalfWidth + 0.008)]}>
+          <meshPhysicalMaterial color="#07151b" metalness={0.36} roughness={0.18} clearcoat={0.8} side={THREE.DoubleSide} />
         </mesh>
       ))}
 
       {/* Thin B-pillar keeps the cabin readable at the side camera preset. */}
       {[-1, 1].map((side) => (
-        <mesh key={`pillar-${side}`} position={[0.17, 0.97, side * (g.cabin.radii.z + 0.02)]} rotation={[0, 0, -0.04]}>
+        <mesh key={`pillar-${side}`} position={[0.17, 0.97, side * (shellHalfWidth + 0.014)]} rotation={[0, 0, -0.04]}>
           <boxGeometry args={[0.045, 0.31, 0.025]} />
           <meshStandardMaterial color="#11181d" metalness={0.4} roughness={0.22} />
         </mesh>
       ))}
 
-      {/* Headlamps show the nose orientation and give the body a useful front reference. */}
-      {[-0.48, 0.48].map((z) => (
-        <mesh key={`headlamp-${z}`} position={[g.noseTipX + 0.22, 0.53, z]} scale={[0.16, 0.08, 0.12]}>
-          <sphereGeometry args={[1, 16, 10]} />
-          <meshStandardMaterial color="#fff0c7" emissive="#ffb766" emissiveIntensity={1.1} roughness={0.18} />
+      {/* Flush headlamps sit on the nose profile instead of floating in front of it. */}
+      {[-0.58, 0.58].map((z) => (
+        <mesh key={`headlamp-${z}`} position={[-2.30, 0.39, z]} rotation={[0, 0, -0.12]}>
+          <boxGeometry args={[0.14, 0.055, 0.20]} />
+          <meshStandardMaterial color="#fff0c7" emissive="#ffb766" emissiveIntensity={0.7} roughness={0.18} />
         </mesh>
       ))}
 

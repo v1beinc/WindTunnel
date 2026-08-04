@@ -87,7 +87,15 @@ const VELOCITY_SHADER = /* glsl */ `
   ${GLSL_VELOCITY_MAIN}
 `;
 
-const RENDER_VERTEX_SHADER = /* glsl */ `${GLSL_RENDER_VERTEX}`;
+const RENDER_VERTEX_SHADER = /* glsl */ `
+  ${GLSL_SD_ELLIPSOID}
+  ${GLSL_SD_BOX}
+  ${GLSL_SD_CYLINDER_Z}
+  ${GLSL_SCENE_SDF_CAR}
+  ${GLSL_SCENE_SDF_GENERIC}
+  ${GLSL_SCENE_SDF}
+  ${GLSL_RENDER_VERTEX}
+`;
 
 const RENDER_FRAGMENT_SHADER = /* glsl */ `${GLSL_RENDER_FRAGMENT}`;
 
@@ -156,6 +164,9 @@ export function GpuParticleFlow({
     texturePosition: { value: null },
     textureVelocity: { value: null },
     uFlowSpeed: { value: 1 },
+    uObjectKind: { value: 0 },
+    uSpoilerAngle: { value: 0 },
+    uDimensions: { value: new THREE.Vector3(4.4, 1.4, 1.9) },
   }), []);
 
   useEffect(() => {
@@ -292,6 +303,9 @@ export function GpuParticleFlow({
     velocityUniforms.uSpoilerAngle.value = spoilerRadians;
     velocityUniforms.uDimensions.value.set(dimensions.length, dimensions.height, dimensions.width);
     currentMaterial.uniforms.uFlowSpeed.value = flowSpeed;
+    currentMaterial.uniforms.uObjectKind.value = objectKind;
+    currentMaterial.uniforms.uSpoilerAngle.value = spoilerRadians;
+    currentMaterial.uniforms.uDimensions.value.set(dimensions.length, dimensions.height, dimensions.width);
 
     if (enabled && running) {
       const cappedDelta = Math.min(delta, FIXED_STEP_SECONDS * MAX_SUBSTEPS * 2);

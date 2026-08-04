@@ -20,6 +20,9 @@ export const GPU_POSITION_NORMAL_EPSILON = 0.018;
 export const GPU_VELOCITY_NORMAL_EPSILON = 0.026;
 
 // Car geometry profile - single source of truth for car dimensions
+export const CAR_CHASSIS_CENTER = CAR_GEOMETRY.chassis.center;
+export const CAR_CHASSIS_HALF_SIZE = CAR_GEOMETRY.chassis.halfSize;
+
 export const CAR_BODY_CENTER = CAR_GEOMETRY.body.center;
 export const CAR_BODY_RADII = CAR_GEOMETRY.body.radii;
 
@@ -146,8 +149,8 @@ export const CPU_COLLISION_PUSH_FACTOR = 5.0;
 export const CPU_GROUND_Y = 0.14;
 export const CPU_GROUND_PUSH_FACTOR = 3.2;
 
-export const CPU_PROJECTION_THRESHOLD = 0.025;
-export const CPU_PROJECTION_CORRECTION = 0.032;
+export const CPU_PROJECTION_THRESHOLD = 0.15;
+export const CPU_PROJECTION_CORRECTION = 0.18;
 export const CPU_PROJECTION_GROUND_Y = 0.055;
 
 // FLOW_* constants (aliases for CPU_* where values are identical, for clarity in flowField.ts)
@@ -181,8 +184,10 @@ export const CAR_RIGHT_SUPPORT_HALF_SIZE = CAR_GEOMETRY.spoiler.supports.right.h
 export const GENERIC_HALF_SIZE_MIN = 0.12;
 export const GENERIC_GROUND_OFFSET = 0.05;
 
-export const POSITION_COLLISION_THRESHOLD = 0.015;
-export const POSITION_COLLISION_PUSH = 0.018;
+// Keep a visible clearance around the shell so thin GPU trails do not sit on or
+// inside the rendered body due to numerical/geometry differences.
+export const POSITION_COLLISION_THRESHOLD = 0.16;
+export const POSITION_COLLISION_PUSH = 0.18;
 export const POSITION_AGE_RESET = 7.5;
 export const POSITION_STREAMWISE_MAX = 7.25;
 export const POSITION_STREAMWISE_MIN = -7.55;

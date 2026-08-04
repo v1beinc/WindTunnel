@@ -35,10 +35,8 @@ describe("analytical flow field", () => {
     expect(sampleObjectSdf(projected, car)).toBeGreaterThan(0.015);
   });
 
-  it("uses separate signed-distance volumes for the body and rear wing", () => {
-    // Body center y is now 0.56 (was 0.66)
+  it("uses separate signed-distance volumes for the chassis and rear wing", () => {
     expect(sampleObjectSdf({ x: 0, y: CAR_GEOMETRY.body.center.y, z: 0 }, car)).toBeLessThan(0);
-    // Wing center y is now 1.35 (was 1.43)
     expect(sampleObjectSdf({ x: CAR_GEOMETRY.spoiler.center.x, y: CAR_GEOMETRY.spoiler.center.y, z: 0.84 }, car, 12)).toBeLessThan(0);
     expect(sampleObjectSdf({ x: 0, y: 3.2, z: 0 }, car)).toBeGreaterThan(1);
   });
@@ -136,6 +134,11 @@ describe("car geometry profile and SDF alignment", () => {
     expect(CAR_GEOMETRY.spoiler.supports.left.halfSize.x).toBe(0.045);
     expect(CAR_GEOMETRY.spoiler.supports.left.halfSize.y).toBe(0.2);
     expect(CAR_GEOMETRY.spoiler.supports.left.halfSize.z).toBe(0.05);
+  });
+
+  it("keeps the visible shell inside the shared chassis envelope", () => {
+    expect(sampleObjectSdf({ x: CAR_GEOMETRY.chassis.center.x, y: CAR_GEOMETRY.chassis.center.y, z: CAR_GEOMETRY.chassis.halfSize.z - 0.01 }, car)).toBeLessThan(0);
+    expect(sampleObjectSdf({ x: CAR_GEOMETRY.chassis.center.x, y: CAR_GEOMETRY.chassis.center.y, z: CAR_GEOMETRY.chassis.halfSize.z + 0.10 }, car)).toBeGreaterThan(0);
   });
 
   it("keeps the visible wheels on the ground and the car envelope profile-aligned", () => {

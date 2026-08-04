@@ -3,8 +3,33 @@
 import { useMemo } from "react";
 import { Line } from "@react-three/drei";
 import * as THREE from "three";
-import { createStreamline, sampleFlowField, type StreamlineSeed, type FlowPoint } from "@/lib/physics/flowField";
+import {
+  createStreamline,
+  sampleFlowField,
+  sampleObjectSdf,
+  sampleObjectNormal,
+  type StreamlineSeed,
+  type FlowPoint,
+} from "@/lib/physics/flowField";
 import type { ObjectSpec } from "@/lib/physics/aerodynamics";
+
+const FLOW_SURFACE_CLEARANCE = 0.30;
+
+function clearFlowPoint(point: FlowPoint, object: ObjectSpec, spoilerAngleDeg: number): FlowPoint {
+  let candidate = point;
+  for (let pass = 0; pass < 3; pass += 1) {
+    const distance = sampleObjectSdf(candidate, object, spoilerAngleDeg);
+    if (distance >= FLOW_SURFACE_CLEARANCE) break;
+    const normal = sampleObjectNormal(candidate, object, spoilerAngleDeg);
+    const correction = FLOW_SURFACE_CLEARANCE - distance;
+    candidate = {
+      x: candidate.x + normal.x * correction,
+      y: Math.max(candidate.y + normal.y * correction, 0.055),
+      z: candidate.z + normal.z * correction,
+    };
+  }
+  return candidate;
+}
 
 const COHERENT_SEEDS: StreamlineSeed[] = Array.from({ length: 40 }, (_, index) => {
   const lane = Math.floor(index / 8);
@@ -81,7 +106,9 @@ export function CoherentStreamlines({
           y: (p1.y + p2.y) * 0.5,
           z: (p1.z + p2.z) * 0.5,
         };
-        allSegments.push({ p1, p2, mid });
+        if (sampleObjectSdf(mid, object, spoilerAngleDeg) >= FLOW_SURFACE_CLEARANCE) {
+          allSegments.push({ p1, p2, mid });
+        }
       }
     }
     
@@ -102,13 +129,8 @@ export function CoherentStreamlines({
     }
     
     const positions: number[] = [];
-    for (const seed of COHERENT_SEEDS) {
-      const points = createStreamline(object, yaw, seed, 120, 0.15, spoilerAngleDeg);
-      for (let i = 0; i < points.length - 1; i++) {
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        positions.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
-      }
+    for (const seg of allSegments) {
+      positions.push(seg.p1.x, seg.p1.y, seg.p1.z, seg.p2.x, seg.p2.y, seg.p2.z);
     }
     
     const geometry = new THREE.BufferGeometry();
@@ -151,7 +173,9 @@ export function CoherentRibbons({
   const ribbons = useMemo(() => {
     return COHERENT_RIBBON_SEEDS.map((seed) => ({
       id: `${seed.lateral}-${seed.height}-${seed.phase}`,
-      points: createStreamline(object, yaw, seed, 120, 0.15, spoilerAngleDeg).map((point) => [point.x, point.y, point.z] as [number, number, number]),
+      points: createStreamline(object, yaw, seed, 120, 0.15, spoilerAngleDeg)
+        .map((point) => clearFlowPoint(point, object, spoilerAngleDeg))
+        .map((point) => [point.x, point.y, point.z] as [number, number, number]),
     }));
   }, [object, yaw, spoilerAngleDeg]);
 

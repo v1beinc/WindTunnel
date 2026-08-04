@@ -3,8 +3,8 @@ import { CAR_GEOMETRY } from "@/lib/flow/carGeometryProfile";
 import {
   DEG_TO_RAD,
   CPU_NORMAL_EPSILON,
-  CAR_BODY_CENTER,
-  CAR_BODY_RADII,
+  CAR_CHASSIS_CENTER,
+  CAR_CHASSIS_HALF_SIZE,
   CAR_NOSE_CENTER,
   CAR_NOSE_RADII,
   CAR_CABIN_CENTER,
@@ -192,7 +192,7 @@ export function createFlowEnvelope(object: ObjectSpec, yawAngleDeg: number): Flo
 /** Signed distance to the visible reduced-order collision model. Negative means inside. */
 export function sampleObjectSdf(point: FlowPoint, object: ObjectSpec, spoilerAngleDeg = 12) {
   if (object.kind === "car") {
-    const body = sdfEllipsoid(translated(point, CAR_BODY_CENTER.x, CAR_BODY_CENTER.y, CAR_BODY_CENTER.z), CAR_BODY_RADII);
+    const chassis = sdfBox(translated(point, CAR_CHASSIS_CENTER.x, CAR_CHASSIS_CENTER.y, CAR_CHASSIS_CENTER.z), CAR_CHASSIS_HALF_SIZE);
     const nose = sdfEllipsoid(translated(point, CAR_NOSE_CENTER.x, CAR_NOSE_CENTER.y, CAR_NOSE_CENTER.z), CAR_NOSE_RADII);
     const cabin = sdfEllipsoid(translated(point, CAR_CABIN_CENTER.x, CAR_CABIN_CENTER.y, CAR_CABIN_CENTER.z), CAR_CABIN_RADII);
     const spoilerPoint = translated(point, CAR_WING_CENTER.x, CAR_WING_CENTER.y, CAR_WING_CENTER.z);
@@ -219,7 +219,7 @@ export function sampleObjectSdf(point: FlowPoint, object: ObjectSpec, spoilerAng
       sdfCylinderZ(translated(point, CAR_WHEEL_REAR_AXLE_X, wheelY, -CAR_WHEEL_TRACK_HALF_WIDTH), wheelR, wheelH)
     );
 
-    return Math.min(body, nose, cabin, wing, leftSupport, rightSupport, wheels);
+    return Math.min(chassis, nose, cabin, wing, leftSupport, rightSupport, wheels);
   }
 
   const halfSize = {

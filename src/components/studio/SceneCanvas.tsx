@@ -467,10 +467,10 @@ function DebugCollisionEnvelope({ spoilerAngleDeg, enabled }: { spoilerAngleDeg:
 
   return (
     <group>
-      {/* Body ellipsoid */}
-      <mesh position={[g.body.center.x, g.body.center.y, g.body.center.z]} scale={[g.body.radii.x * 2, g.body.radii.y * 2, g.body.radii.z * 2]}>
-        <sphereGeometry args={[1, 24, 16]} />
-        <meshBasicMaterial color="#74d4bd" transparent opacity={0.15} wireframe />
+      {/* Shared lower chassis envelope. This should contain the visible shell. */}
+      <mesh position={[g.chassis.center.x, g.chassis.center.y, g.chassis.center.z]} scale={[g.chassis.halfSize.x * 2, g.chassis.halfSize.y * 2, g.chassis.halfSize.z * 2]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshBasicMaterial color="#ff8f68" transparent opacity={0.18} wireframe />
       </mesh>
 
       {/* Nose ellipsoid */}
@@ -588,7 +588,7 @@ function SceneContent({
             object={flowObject}
             yaw={yawAngleDeg}
             spoilerAngleDeg={spoilerAngleDeg}
-            enabled
+            enabled={false}
             speed={metrics.effectiveWindSpeedMps}
           />
           <CoherentStreamlines
@@ -636,7 +636,7 @@ function SceneContent({
           )}
         </Suspense>
       </ModelErrorBoundary>
-      <DebugCollisionEnvelope spoilerAngleDeg={spoilerAngleDeg} enabled={overlays.pressure} />
+      <DebugCollisionEnvelope spoilerAngleDeg={spoilerAngleDeg} enabled={flowMode === "pressure"} />
       <ContactShadows position={[0, 0.02, 0]} opacity={0.42} scale={8} blur={2.8} far={5} frames={1} />
       <OrbitControls makeDefault enablePan={false} minDistance={4.8} maxDistance={12} target={[0, 0.8, 0]} />
     </>

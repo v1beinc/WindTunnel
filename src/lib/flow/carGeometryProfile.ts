@@ -5,7 +5,13 @@ export interface CarGeometryProfile {
   height: number;
   groundClearance: number;
 
-  // Body (main hull) - ellipsoid approximation
+  // Lower chassis envelope shared by the visual shell and the SDF.
+  chassis: {
+    center: { x: number; y: number; z: number };
+    halfSize: { x: number; y: number; z: number };
+  };
+
+  // Body (main hull) - ellipsoid approximation for the reduced-order solver
   body: {
     center: { x: number; y: number; z: number };
     radii: { x: number; y: number; z: number };
@@ -59,6 +65,11 @@ export const CAR_GEOMETRY: CarGeometryProfile = {
   height: 1.12,
   groundClearance: 0.12,
 
+  chassis: {
+    center: { x: -0.05, y: 0.42, z: 0.0 },
+    halfSize: { x: 1.92, y: 0.30, z: 0.89 },
+  },
+
   body: {
     center: { x: 0.08, y: 0.48, z: 0.0 },
     radii: { x: 1.75, y: 0.28, z: 0.75 },
@@ -104,6 +115,7 @@ export const CAR_GEOMETRY: CarGeometryProfile = {
 // Helper to get all primitive definitions for SDF
 export function getCarSdfPrimitives(profile: CarGeometryProfile = CAR_GEOMETRY) {
   return {
+    chassis: { center: profile.chassis.center, halfSize: profile.chassis.halfSize },
     body: { center: profile.body.center, radii: profile.body.radii },
     nose: { center: profile.nose.center, radii: profile.nose.radii },
     cabin: { center: profile.cabin.center, radii: profile.cabin.radii },

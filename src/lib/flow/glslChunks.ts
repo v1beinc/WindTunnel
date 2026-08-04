@@ -2,8 +2,8 @@ import {
   HASH21_MUL1,
   HASH21_MUL2,
   HASH21_ADD,
-  CAR_BODY_RADII,
-  CAR_BODY_CENTER,
+  CAR_CHASSIS_CENTER,
+  CAR_CHASSIS_HALF_SIZE,
   CAR_NOSE_RADII,
   CAR_NOSE_CENTER,
   CAR_CABIN_RADII,
@@ -106,7 +106,7 @@ float sdCylinderZ(vec3 p, float radius, float height) {
 
 export const GLSL_SCENE_SDF_CAR = /* glsl */ `
 float sceneSdfCar(vec3 p, float spoilerAngle) {
-  float body = sdEllipsoid(p - vec3(${CAR_BODY_CENTER.x.toFixed(2)}, ${CAR_BODY_CENTER.y.toFixed(2)}, ${CAR_BODY_CENTER.z.toFixed(2)}), vec3(${CAR_BODY_RADII.x.toFixed(2)}, ${CAR_BODY_RADII.y.toFixed(2)}, ${CAR_BODY_RADII.z.toFixed(2)}));
+  float chassis = sdBox(p - vec3(${CAR_CHASSIS_CENTER.x.toFixed(2)}, ${CAR_CHASSIS_CENTER.y.toFixed(2)}, ${CAR_CHASSIS_CENTER.z.toFixed(2)}), vec3(${CAR_CHASSIS_HALF_SIZE.x.toFixed(2)}, ${CAR_CHASSIS_HALF_SIZE.y.toFixed(2)}, ${CAR_CHASSIS_HALF_SIZE.z.toFixed(2)}));
   float nose = sdEllipsoid(p - vec3(${CAR_NOSE_CENTER.x.toFixed(2)}, ${CAR_NOSE_CENTER.y.toFixed(2)}, ${CAR_NOSE_CENTER.z.toFixed(2)}), vec3(${CAR_NOSE_RADII.x.toFixed(2)}, ${CAR_NOSE_RADII.y.toFixed(2)}, ${CAR_NOSE_RADII.z.toFixed(2)}));
   float cabin = sdEllipsoid(p - vec3(${CAR_CABIN_CENTER.x.toFixed(2)}, ${CAR_CABIN_CENTER.y.toFixed(2)}, ${CAR_CABIN_CENTER.z.toFixed(2)}), vec3(${CAR_CABIN_RADII.x.toFixed(2)}, ${CAR_CABIN_RADII.y.toFixed(2)}, ${CAR_CABIN_RADII.z.toFixed(2)}));
   float angle = -spoilerAngle;
@@ -133,7 +133,7 @@ float sceneSdfCar(vec3 p, float spoilerAngle) {
   wheels = min(wheels, sdCylinderZ(p - vec3(rearAxleX, wheelY, trackHalf), wheelR, wheelH));
   wheels = min(wheels, sdCylinderZ(p - vec3(rearAxleX, wheelY, -trackHalf), wheelR, wheelH));
 
-  return min(min(min(min(body, nose), cabin), min(wing, supports)), wheels);
+  return min(min(min(min(chassis, nose), cabin), min(wing, supports)), wheels);
 }
 `;
 
@@ -270,9 +270,13 @@ attribute float lineEnd;
 uniform sampler2D texturePosition;
 uniform sampler2D textureVelocity;
 uniform float uFlowSpeed;
+uniform float uObjectKind;
+uniform float uSpoilerAngle;
+uniform vec3 uDimensions;
 varying float vLineEnd;
 varying float vSpeedRatio;
 varying float vWake;
+varying float vSurfaceDistance;
 
 void main() {
   vec3 particlePosition = texture2D(texturePosition, particleUv).xyz;
@@ -284,6 +288,7 @@ void main() {
   vLineEnd = lineEnd;
   vSpeedRatio = magnitude / max(uFlowSpeed, 0.001);
   vWake = velocityState.w;
+  vSurfaceDistance = sceneSdf(renderedPosition, uObjectKind, uSpoilerAngle, uDimensions);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(renderedPosition, 1.0);
 }
 `;
@@ -292,8 +297,13 @@ export const GLSL_RENDER_FRAGMENT = /* glsl */ `
 varying float vLineEnd;
 varying float vSpeedRatio;
 varying float vWake;
+varying float vSurfaceDistance;
 
 void main() {
+  // Keep tracer strokes from painting across the visible shell. The solver
+  // still owns collision response; this is only a thin readability mask for
+  // antialiased line segments near the reduced-order surface.
+  if (vSurfaceDistance < 0.26) discard;
   vec3 slowColor = vec3(1.0, 0.55, 0.18);
   vec3 baseColor = vec3(0.34, 0.86, 0.84);
   vec3 fastColor = vec3(0.76, 1.0, 0.43);
@@ -301,7 +311,8 @@ void main() {
   vec3 color = mix(slowColor, baseColor, smoothstep(0.38, 0.92, vSpeedRatio));
   color = mix(color, fastColor, smoothstep(1.03, 1.34, vSpeedRatio));
   color = mix(color, wakeColor, smoothstep(0.18, 0.72, vWake));
-  float alpha = mix(0.035, 0.42, vLineEnd) * (0.52 + min(vSpeedRatio, 1.3) * 0.22);
+  float surfaceFade = smoothstep(0.26, 0.52, vSurfaceDistance);
+  float alpha = mix(0.035, 0.42, vLineEnd) * (0.52 + min(vSpeedRatio, 1.3) * 0.22) * surfaceFade;
   gl_FragColor = vec4(color, alpha);
 }
 `;

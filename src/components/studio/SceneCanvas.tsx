@@ -149,9 +149,11 @@ function ModelErrorMarker() {
   );
 }
 
-function PressureField({ object, yaw, intensity, enabled }: {
+function PressureField({ object, yaw, speed, spoilerAngleDeg, intensity, enabled }: {
   object: ObjectSpec;
   yaw: number;
+  speed: number;
+  spoilerAngleDeg: number;
   intensity: number;
   enabled: boolean;
 }) {
@@ -161,6 +163,13 @@ function PressureField({ object, yaw, intensity, enabled }: {
     const positions: number[] = [];
     const colors: number[] = [];
     const color = new THREE.Color();
+    const solverConfig = {
+      object,
+      yawAngleDeg: yaw,
+      speedMps: speed,
+      spoilerAngleDeg,
+      turbulenceStrength: 1,
+    };
 
     for (let xIndex = 0; xIndex <= 30; xIndex += 1) {
       const normalizedX = -1 + (xIndex / 30) * 2;
@@ -173,10 +182,11 @@ function PressureField({ object, yaw, intensity, enabled }: {
         if (y < 0.08) continue;
         const point = createFlowPoint(streamwise, lateral, y, yaw);
         positions.push(point.x, point.y, point.z);
+        const sample = sampleRebuildFlowField(point, solverConfig, 0, ringIndex * 0.3, Math.sign(y - flowEnvelope.centerY) || 1);
 
-        if (normalizedX < -0.46) color.setHSL(0.035, 0.88, 0.58);
-        else if (Math.abs(Math.sin(theta)) > 0.52) color.setHSL(0.47, 0.78, 0.57);
-        else if (normalizedX > 0.58) color.setHSL(0.7, 0.68, 0.64);
+        if (sample.stagnationIntensity > 0.22) color.setHSL(0.035, 0.88, 0.58);
+        else if (sample.wakeIntensity > 0.16) color.setHSL(0.7, 0.68, 0.64);
+        else if (sample.speedRatio > 1.08) color.setHSL(0.47, 0.78, 0.57);
         else color.setHSL(0.52, 0.72, 0.62);
         colors.push(color.r, color.g, color.b);
       }
@@ -194,7 +204,7 @@ function PressureField({ object, yaw, intensity, enabled }: {
     }
 
     return { positions: new Float32Array(positions), colors: new Float32Array(colors) };
-  }, [object, yaw]);
+  }, [object, yaw, speed, spoilerAngleDeg]);
 
   return (
     <group visible={enabled}>
@@ -458,7 +468,14 @@ function SceneContent({
         />
       )}
       {flowMode === "pressure" && (
-        <PressureField object={flowObject} yaw={yawAngleDeg} intensity={intensity} enabled />
+        <PressureField
+          object={flowObject}
+          yaw={yawAngleDeg}
+          speed={metrics.effectiveWindSpeedMps}
+          spoilerAngleDeg={spoilerAngleDeg}
+          intensity={intensity}
+          enabled
+        />
       )}
       {flowMode === "velocity" && (
         <VelocityGlyphs

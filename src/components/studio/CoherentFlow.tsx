@@ -40,9 +40,8 @@ interface CoherentStreamlinesProps {
   yaw: number;
   spoilerAngleDeg: number;
   enabled: boolean;
-  running: boolean;
   turbulenceStrength: number;
-  metrics?: Record<string, unknown>;
+  speed: number;
 }
 
 function getFlowColor(speedRatio: number, wakeIntensity: number, stagnationIntensity: number): THREE.Color {
@@ -67,9 +66,8 @@ export function CoherentStreamlines({
   yaw,
   spoilerAngleDeg,
   enabled,
-  running,
   turbulenceStrength,
-  metrics,
+  speed,
 }: CoherentStreamlinesProps) {
   const geometry = useMemo(() => {
     const allSegments: Array<{ p1: FlowPoint; p2: FlowPoint; mid: FlowPoint }> = [];
@@ -93,7 +91,9 @@ export function CoherentStreamlines({
     for (const seg of allSegments) {
       const sample = sampleFlowField(seg.mid, object, yaw, 0, 0, turbulenceStrength, spoilerAngleDeg);
       
-      const speedRatio = Math.min(Math.hypot(sample.velocity.x, sample.velocity.y, sample.velocity.z) / Math.max(0.001, Math.sqrt(2) * 27.8 / 20), 2.0);
+      // Use actual speed for speedRatio calculation
+      const refSpeed = Math.max(0.001, speed);
+      const speedRatio = Math.min(Math.hypot(sample.velocity.x, sample.velocity.y, sample.velocity.z) / refSpeed, 2.0);
       const wakeIntensity = sample.wakeIntensity;
       const stagnationIntensity = sample.stagnationIntensity;
       
@@ -117,9 +117,9 @@ export function CoherentStreamlines({
     geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
     
     return geometry;
-  }, [object, yaw, spoilerAngleDeg, turbulenceStrength]);
+  }, [object, yaw, spoilerAngleDeg, turbulenceStrength, speed]);
 
-  if (!enabled || !running) return null;
+  if (!enabled) return null;
 
   return (
     <lineSegments geometry={geometry} visible={enabled}>
@@ -134,22 +134,27 @@ export function CoherentStreamlines({
   );
 }
 
+interface CoherentRibbonsProps {
+  object: ObjectSpec;
+  yaw: number;
+  spoilerAngleDeg: number;
+  enabled: boolean;
+}
+
 export function CoherentRibbons({
   object,
   yaw,
   spoilerAngleDeg,
   enabled,
-  running,
-  turbulenceStrength,
-}: CoherentStreamlinesProps) {
+}: CoherentRibbonsProps) {
   const ribbons = useMemo(() => {
     return COHERENT_RIBBON_SEEDS.map((seed) => ({
       id: `${seed.lateral}-${seed.height}-${seed.phase}`,
       points: createStreamline(object, yaw, seed, 120, 0.15, spoilerAngleDeg).map((point) => [point.x, point.y, point.z] as [number, number, number]),
     }));
-  }, [object, yaw, spoilerAngleDeg, turbulenceStrength]);
+  }, [object, yaw, spoilerAngleDeg]);
 
-  if (!enabled || !running) return null;
+  if (!enabled) return null;
 
   return (
     <group visible={enabled}>

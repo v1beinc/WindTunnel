@@ -647,17 +647,14 @@ function SceneContent({
             yaw={yawAngleDeg}
             spoilerAngleDeg={spoilerAngleDeg}
             enabled
-            running={running}
-            turbulenceStrength={overlays.wake ? 1 : 0}
           />
           <CoherentStreamlines
             object={flowObject}
             yaw={yawAngleDeg}
             spoilerAngleDeg={spoilerAngleDeg}
             enabled
-            running={running}
             turbulenceStrength={overlays.wake ? 1 : 0}
-            metrics={metrics}
+            speed={metrics.effectiveWindSpeedMps}
           />
         </>
       )}
@@ -668,17 +665,14 @@ function SceneContent({
             yaw={yawAngleDeg}
             spoilerAngleDeg={spoilerAngleDeg}
             enabled
-            running={running}
-            turbulenceStrength={overlays.wake ? 1 : 0}
           />
           <CoherentStreamlines
             object={flowObject}
             yaw={yawAngleDeg}
             spoilerAngleDeg={spoilerAngleDeg}
             enabled
-            running={running}
             turbulenceStrength={overlays.wake ? 1 : 0}
-            metrics={metrics}
+            speed={metrics.effectiveWindSpeedMps}
           />
           <GpuParticleFlow
             object={flowObject}

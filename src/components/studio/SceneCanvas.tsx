@@ -12,7 +12,7 @@ import {
 } from "@/lib/physics/flowField";
 import type { FlowMode, Overlays } from "@/lib/store";
 import { CAR_GEOMETRY } from "@/lib/flow/carGeometryProfile";
-import { getRebuildFlowCoordinates, sampleRebuildFlowField } from "@/lib/flow/rebuildSolver";
+import { getRebuildFlowCoordinates, sampleRebuildFlowField, type RebuildFlowSample } from "@/lib/flow/rebuildSolver";
 
 export type CameraPreset = "perspective" | "side";
 
@@ -43,6 +43,20 @@ type ModelErrorBoundaryState = {
 function pseudoRandom(seed: number) {
   const value = Math.sin(seed * 12.9898) * 43758.5453;
   return value - Math.floor(value);
+}
+
+function setFlowColor(color: THREE.Color, sample: RebuildFlowSample) {
+  if (sample.wakeIntensity > 0.2) {
+    color.setHSL(0.75, 0.65, 0.55);
+  } else if (sample.stagnationIntensity > 0.25) {
+    color.setHSL(0.08, 0.75, 0.55);
+  } else if (sample.speedRatio > 1.12) {
+    color.setHSL(0.48, 0.7, 0.5);
+  } else if (sample.speedRatio > 1.02) {
+    color.setHSL(0.52, 0.6, 0.52);
+  } else {
+    color.setHSL(0.56, 0.5, 0.55);
+  }
 }
 
 class ModelErrorBoundary extends Component<ModelErrorBoundaryProps, ModelErrorBoundaryState> {
@@ -158,11 +172,10 @@ function PressureField({ object, yaw, speed, spoilerAngleDeg, intensity, enabled
   enabled: boolean;
 }) {
   const envelope = useMemo(() => createFlowEnvelope(object, yaw), [object, yaw]);
-  const field = useMemo(() => {
+const field = useMemo(() => {
     const flowEnvelope = createFlowEnvelope(object, yaw);
     const positions: number[] = [];
     const colors: number[] = [];
-    const color = new THREE.Color();
     const solverConfig = {
       object,
       yawAngleDeg: yaw,
@@ -171,7 +184,7 @@ function PressureField({ object, yaw, speed, spoilerAngleDeg, intensity, enabled
       turbulenceStrength: 1,
     };
 
-    for (let xIndex = 0; xIndex <= 30; xIndex += 1) {
+for (let xIndex = 0; xIndex <= 30; xIndex += 1) {
       const normalizedX = -1 + (xIndex / 30) * 2;
       const radius = Math.sqrt(Math.max(0.025, 1 - normalizedX ** 2));
       for (let ringIndex = 0; ringIndex < 24; ringIndex += 1) {
@@ -183,11 +196,8 @@ function PressureField({ object, yaw, speed, spoilerAngleDeg, intensity, enabled
         const point = createFlowPoint(streamwise, lateral, y, yaw);
         positions.push(point.x, point.y, point.z);
         const sample = sampleRebuildFlowField(point, solverConfig, 0, ringIndex * 0.3, Math.sign(y - flowEnvelope.centerY) || 1);
-
-        if (sample.stagnationIntensity > 0.22) color.setHSL(0.035, 0.88, 0.58);
-        else if (sample.wakeIntensity > 0.16) color.setHSL(0.7, 0.68, 0.64);
-        else if (sample.speedRatio > 1.08) color.setHSL(0.47, 0.78, 0.57);
-        else color.setHSL(0.52, 0.72, 0.62);
+        const color = new THREE.Color();
+        setFlowColor(color, sample);
         colors.push(color.r, color.g, color.b);
       }
     }
@@ -199,7 +209,9 @@ function PressureField({ object, yaw, speed, spoilerAngleDeg, intensity, enabled
       const y = Math.max(0.08, flowEnvelope.centerY + (pseudoRandom(index + 1901) - 0.5) * flowEnvelope.halfHeight * 2 * expansion);
       const point = createFlowPoint(streamwise, lateral, y, yaw);
       positions.push(point.x, point.y, point.z);
-      color.setHSL(0.71, 0.68, 0.6 - pseudoRandom(index + 2001) * 0.12);
+      const sample = sampleRebuildFlowField(point, solverConfig, 0, index * 0.1, 0);
+      const color = new THREE.Color();
+      setFlowColor(color, sample);
       colors.push(color.r, color.g, color.b);
     }
 
@@ -257,7 +269,6 @@ function VelocityGlyphs({ object, yaw, speed, spoilerAngleDeg, enabled }: {
       spoilerAngleDeg,
       turbulenceStrength: 1,
     };
-    const color = new THREE.Color();
 
     for (let x = -5.8; x <= 5.8; x += 0.72) {
       for (let y = 0.28; y <= 2.9; y += 0.52) {
@@ -284,16 +295,14 @@ function VelocityGlyphs({ object, yaw, speed, spoilerAngleDeg, enabled }: {
             start.z + (sample.velocity.z / magnitude) * length,
           );
 
-          if (sample.stagnationIntensity > 0.3) color.set("#f0ad52");
-          else if (sample.wakeIntensity > 0.2) color.set("#8873d8");
-          else if (sample.speedRatio > 1.08) color.set("#61e8c9");
-          else color.set("#75a5ae");
+          const color = new THREE.Color();
+          setFlowColor(color, sample);
           colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
         }
       }
     }
 
-    return { positions: new Float32Array(positions), colors: new Float32Array(colors) };
+return { positions: new Float32Array(positions), colors: new Float32Array(colors) };
   }, [object, yaw, speed, spoilerAngleDeg]);
 
   return (

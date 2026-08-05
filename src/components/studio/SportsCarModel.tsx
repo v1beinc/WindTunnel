@@ -8,55 +8,44 @@ type SportsCarModelProps = {
   spoilerAngleDeg: number;
 };
 
-function Wheel({ radius, width }: { radius: number; width: number }) {
+function Tire({ radius, width }: { radius: number; width: number }) {
   return (
-    <group rotation={[Math.PI / 2, 0, 0]}>
-      <mesh castShadow receiveShadow>
-        <cylinderGeometry args={[radius, radius, width, 32, 1]} />
-        <meshStandardMaterial color="#0a0d0f" roughness={0.7} metalness={0.05} />
-      </mesh>
-      <mesh position={[0, width * 0.52, 0]}>
-        <cylinderGeometry args={[radius * 0.6, radius * 0.6, 0.04, 32]} />
-        <meshStandardMaterial color="#2a3439" metalness={0.85} roughness={0.2} />
-      </mesh>
-      <mesh position={[0, -width * 0.52, 0]}>
-        <cylinderGeometry args={[radius * 0.6, radius * 0.6, 0.04, 32]} />
-        <meshStandardMaterial color="#2a3439" metalness={0.85} roughness={0.2} />
-      </mesh>
-    </group>
+    <mesh castShadow receiveShadow>
+      <cylinderGeometry args={[radius, radius, width, 32, 1]} />
+      <meshStandardMaterial color="#0a0d0f" roughness={0.85} metalness={0.02} />
+    </mesh>
   );
 }
 
-function Hubcap({ radius, offsetZ }: { radius: number; offsetZ: number }) {
+function Rim({ radius, width }: { radius: number; width: number }) {
+  const innerRadius = radius * 0.55;
   return (
-    <group position={[0, 0, offsetZ]} rotation={[Math.PI / 2, 0, 0]}>
-      <mesh>
-        <cylinderGeometry args={[radius * 0.55, radius * 0.55, 0.035, 32]} />
+    <group>
+      <mesh castShadow receiveShadow>
+        <cylinderGeometry args={[innerRadius, innerRadius, width + 0.01, 24, 1]} />
+        <meshStandardMaterial color="#2a3439" metalness={0.85} roughness={0.2} />
+      </mesh>
+      <mesh position={[0, 0, width * 0.52]}>
+        <cylinderGeometry args={[innerRadius * 0.65, innerRadius * 0.65, 0.03, 24]} />
         <meshStandardMaterial color="#3a454a" metalness={0.8} roughness={0.25} />
       </mesh>
-      <mesh position={[0, 0, 0.02]}>
-        <cylinderGeometry args={[radius * 0.2, radius * 0.2, 0.025, 24]} />
-        <meshStandardMaterial color="#4e5a5f" metalness={0.75} roughness={0.22} />
+      <mesh position={[0, 0, -width * 0.52]}>
+        <cylinderGeometry args={[innerRadius * 0.65, innerRadius * 0.65, 0.03, 24]} />
+        <meshStandardMaterial color="#3a454a" metalness={0.8} roughness={0.25} />
+      </mesh>
+      <mesh position={[0, 0, 0]}>
+        <cylinderGeometry args={[innerRadius * 0.22, innerRadius * 0.22, width + 0.02, 12]} />
+        <meshStandardMaterial color="#1a2023" metalness={0.6} roughness={0.3} />
       </mesh>
     </group>
   );
 }
 
-function WheelFace({ radius, hubRadius, offsetZ }: { radius: number; hubRadius: number; offsetZ: number }) {
+function WheelAssembly({ radius, width }: { radius: number; width: number }) {
   return (
-    <group position={[0, 0, offsetZ]}>
-      <mesh renderOrder={4}>
-        <circleGeometry args={[radius, 32]} />
-        <meshBasicMaterial color="#050708" side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[0, 0, 0.006]} renderOrder={5}>
-        <circleGeometry args={[hubRadius, 24]} />
-        <meshBasicMaterial color="#607176" side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[0, 0, 0.012]} renderOrder={6}>
-        <circleGeometry args={[hubRadius * 0.22, 20]} />
-        <meshBasicMaterial color="#11181d" side={THREE.DoubleSide} />
-      </mesh>
+    <group rotation={[Math.PI / 2, 0, 0]}>
+      <Tire radius={radius} width={width} />
+      <Rim radius={radius} width={width} />
     </group>
   );
 }
@@ -65,203 +54,222 @@ export function SportsCarModel({ spoilerAngleDeg }: SportsCarModelProps) {
   const spoilerRotation = -(spoilerAngleDeg * Math.PI) / 180;
   const g = CAR_GEOMETRY;
   const w = g.wheels;
-  const shellHalfWidth = g.width * 0.48;
 
-  // One beveled side-profile extrusion keeps the body visually continuous.
-  // The same lower envelope is represented by CAR_GEOMETRY.chassis in the SDF.
-  const shellGeometry = useMemo(() => {
-    const shape = new THREE.Shape();
-    shape.moveTo(-2.48, 0.16);
-    shape.lineTo(-2.38, 0.31);
-    shape.lineTo(-1.82, 0.55);
-    shape.lineTo(-0.96, 0.63);
-    shape.lineTo(-0.44, 0.76);
-    shape.lineTo(-0.05, 1.10);
-    shape.lineTo(0.40, 1.17);
-    shape.lineTo(0.82, 1.08);
-    shape.lineTo(1.12, 0.90);
-    shape.lineTo(1.42, 0.71);
-    shape.lineTo(1.86, 0.56);
-    shape.lineTo(1.88, 0.20);
-    shape.lineTo(-2.48, 0.16);
-    shape.closePath();
-    const geo = new THREE.ExtrudeGeometry(shape, {
-      depth: shellHalfWidth * 2,
-      bevelEnabled: true,
-      bevelThickness: 0.055,
-      bevelSize: 0.045,
-      bevelSegments: 2,
-      curveSegments: 3,
-      steps: 1,
-    });
-    geo.translate(0, 0, -shellHalfWidth);
-    geo.computeVertexNormals();
-    return geo;
-  }, [shellHalfWidth]);
+  const bodyMaterial = useMemo(
+    () => new THREE.MeshPhysicalMaterial({
+      color: "#b81d35",
+      metalness: 0.35,
+      roughness: 0.45,
+      clearcoat: 0.5,
+      clearcoatRoughness: 0.3,
+    }),
+    []
+  );
 
-  const windowGeometry = useMemo(() => {
-    const shape = new THREE.Shape();
-    shape.moveTo(-0.72, 0.80);
-    shape.lineTo(-0.25, 1.08);
-    shape.lineTo(0.36, 1.13);
-    shape.lineTo(0.88, 1.03);
-    shape.lineTo(1.02, 0.88);
-    shape.lineTo(0.96, 0.80);
-    shape.closePath();
-    return new THREE.ShapeGeometry(shape);
-  }, []);
+  const glassMaterial = useMemo(
+    () => new THREE.MeshPhysicalMaterial({
+      color: "#08181f",
+      metalness: 0.2,
+      roughness: 0.1,
+      transmission: 0.85,
+      thickness: 0.01,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+    }),
+    []
+  );
 
-  // A thin airfoil section makes the rear wing read as an actual adjustable
-  // surface. Its complete envelope stays inside CAR_GEOMETRY.spoiler, so the
-  // visual pivot and the solver's collision profile remain the same object.
-  const spoilerGeometry = useMemo(() => {
-    const section = new THREE.Shape();
-    section.moveTo(-g.spoiler.halfSize.x, -g.spoiler.halfSize.y * 0.35);
-    section.lineTo(g.spoiler.halfSize.x * 0.72, -g.spoiler.halfSize.y);
-    section.lineTo(g.spoiler.halfSize.x, 0);
-    section.lineTo(g.spoiler.halfSize.x * 0.72, g.spoiler.halfSize.y);
-    section.lineTo(-g.spoiler.halfSize.x, g.spoiler.halfSize.y * 0.35);
-    section.closePath();
-    const geo = new THREE.ExtrudeGeometry(section, {
-      depth: g.spoiler.halfSize.z * 2,
+  const spoilerMaterial = useMemo(
+    () => new THREE.MeshPhysicalMaterial({
+      color: "#141a1e",
+      metalness: 0.75,
+      roughness: 0.2,
+      clearcoat: 0.6,
+      clearcoatRoughness: 0.2,
+    }),
+    []
+  );
+
+  const supportMaterial = useMemo(
+    () => new THREE.MeshStandardMaterial({
+      color: "#101518",
+      metalness: 0.7,
+      roughness: 0.25,
+    }),
+    []
+  );
+
+  const lightMaterial = useMemo(
+    () => new THREE.MeshStandardMaterial({
+      color: "#fff0c7",
+      emissive: "#ffb766",
+      emissiveIntensity: 0.6,
+      roughness: 0.2,
+    }),
+    []
+  );
+
+  const taillightMaterial = useMemo(
+    () => new THREE.MeshStandardMaterial({
+      color: "#d43c34",
+      emissive: "#931b18",
+      emissiveIntensity: 0.7,
+      roughness: 0.25,
+    }),
+    []
+  );
+
+  const darkTrimMaterial = useMemo(
+    () => new THREE.MeshStandardMaterial({
+      color: "#101518",
+      metalness: 0.65,
+      roughness: 0.3,
+    }),
+    []
+  );
+
+  const exhaustMaterial = useMemo(
+    () => new THREE.MeshPhysicalMaterial({
+      color: "#b81d35",
+      metalness: 0.8,
+      roughness: 0.15,
+      clearcoat: 1,
+      clearcoatRoughness: 0.1,
+    }),
+    []
+  );
+
+  const bodyGroup = useMemo(() => {
+    const group = new THREE.Group();
+
+    const mainBody = new THREE.BoxGeometry(g.chassis.halfSize.x * 2, g.chassis.halfSize.y * 2, g.chassis.halfSize.z * 2);
+    const mainMesh = new THREE.Mesh(mainBody, bodyMaterial);
+    mainMesh.position.set(g.chassis.center.x, g.chassis.center.y, g.chassis.center.z);
+    mainMesh.castShadow = true;
+    mainMesh.receiveShadow = true;
+    group.add(mainMesh);
+
+    const noseShape = new THREE.Shape();
+    noseShape.moveTo(0, -g.nose.radii.y);
+    noseShape.quadraticCurveTo(g.nose.radii.x * 0.5, -g.nose.radii.y, g.nose.radii.x, 0);
+    noseShape.quadraticCurveTo(g.nose.radii.x * 0.5, g.nose.radii.y, 0, g.nose.radii.y);
+    noseShape.quadraticCurveTo(-g.nose.radii.x * 0.5, g.nose.radii.y, -g.nose.radii.x, 0);
+    noseShape.quadraticCurveTo(-g.nose.radii.x * 0.5, -g.nose.radii.y, 0, -g.nose.radii.y);
+    const noseGeo = new THREE.ExtrudeGeometry(noseShape, {
+      depth: g.nose.radii.z * 2,
       bevelEnabled: false,
-      curveSegments: 2,
-      steps: 1,
     });
-    geo.translate(0, 0, -g.spoiler.halfSize.z);
-    geo.computeVertexNormals();
-    return geo;
-  }, [g.spoiler.halfSize.x, g.spoiler.halfSize.y, g.spoiler.halfSize.z]);
+    noseGeo.translate(0, 0, -g.nose.radii.z);
+    const noseMesh = new THREE.Mesh(noseGeo, bodyMaterial);
+    noseMesh.position.set(g.nose.center.x, g.nose.center.y, g.nose.center.z);
+    noseMesh.castShadow = true;
+    noseMesh.receiveShadow = true;
+    group.add(noseMesh);
 
-  // Spoiler supports - positioned relative to spoiler center
-  const supportGeometry = useMemo(() => {
-    const geo = new THREE.BoxGeometry(
+    const cabinShape = new THREE.Shape();
+    const cabinW = g.cabin.radii.z * 2;
+    const cabinH = g.cabin.radii.y * 2;
+    cabinShape.moveTo(-g.cabin.radii.x * 0.8, -cabinH * 0.5);
+    cabinShape.lineTo(g.cabin.radii.x * 0.6, -cabinH * 0.5);
+    cabinShape.lineTo(g.cabin.radii.x * 0.9, cabinH * 0.5);
+    cabinShape.lineTo(-g.cabin.radii.x * 0.5, cabinH * 0.5);
+    const cabinGeo = new THREE.ExtrudeGeometry(cabinShape, {
+      depth: cabinW,
+      bevelEnabled: false,
+    });
+    cabinGeo.translate(0, 0, -cabinW * 0.5);
+    const cabinMesh = new THREE.Mesh(cabinGeo, glassMaterial);
+    cabinMesh.position.set(g.cabin.center.x, g.cabin.center.y, g.cabin.center.z);
+    group.add(cabinMesh);
+
+    const rearDeckGeo = new THREE.BoxGeometry(
+      g.tailX - g.cabin.center.x - g.cabin.radii.x,
+      g.chassis.halfSize.y * 0.6,
+      g.chassis.halfSize.z * 1.8
+    );
+    const rearDeckMesh = new THREE.Mesh(rearDeckGeo, bodyMaterial);
+    rearDeckMesh.position.set(
+      g.cabin.center.x + g.cabin.radii.x + (g.tailX - g.cabin.center.x - g.cabin.radii.x) * 0.5,
+      g.chassis.center.y + g.chassis.halfSize.y + g.chassis.halfSize.y * 0.3,
+      0
+    );
+    rearDeckMesh.castShadow = true;
+    rearDeckMesh.receiveShadow = true;
+    group.add(rearDeckMesh);
+
+    return group;
+  }, [bodyMaterial, glassMaterial]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const spoilerGroup = useMemo(() => {
+    const group = new THREE.Group();
+
+    const wingGeo = new THREE.BoxGeometry(
+      g.spoiler.halfSize.x * 2,
+      g.spoiler.halfSize.y * 2,
+      g.spoiler.halfSize.z * 2
+    );
+    const wingMesh = new THREE.Mesh(wingGeo, spoilerMaterial);
+    wingMesh.castShadow = true;
+    group.add(wingMesh);
+
+    const supportGeo = new THREE.BoxGeometry(
       g.spoiler.supports.left.halfSize.x * 2,
       g.spoiler.supports.left.halfSize.y * 2,
       g.spoiler.supports.left.halfSize.z * 2
     );
-    return geo;
-  }, [g.spoiler.supports.left.halfSize.x, g.spoiler.supports.left.halfSize.y, g.spoiler.supports.left.halfSize.z]);
+    const leftSupport = new THREE.Mesh(supportGeo, supportMaterial);
+    leftSupport.position.set(
+      g.spoiler.supports.left.center.x - g.spoiler.center.x,
+      g.spoiler.supports.left.center.y - g.spoiler.center.y,
+      g.spoiler.supports.left.center.z - g.spoiler.center.z
+    );
+    leftSupport.castShadow = true;
+    group.add(leftSupport);
+
+    const rightSupport = new THREE.Mesh(supportGeo, supportMaterial);
+    rightSupport.position.set(
+      g.spoiler.supports.right.center.x - g.spoiler.center.x,
+      g.spoiler.supports.right.center.y - g.spoiler.center.y,
+      g.spoiler.supports.right.center.z - g.spoiler.center.z
+    );
+    rightSupport.castShadow = true;
+    group.add(rightSupport);
+
+    return group;
+  }, [spoilerMaterial, supportMaterial]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <group position={[0, 0.015, 0]}>
-      {/* Unified low-poly body shell */}
-      <mesh geometry={shellGeometry} castShadow receiveShadow>
-        <meshPhysicalMaterial
-          color="#c91f3b"
-          emissive="#180207"
-          emissiveIntensity={0.12}
-          metalness={0.46}
-          roughness={0.30}
-          clearcoat={0.72}
-          clearcoatRoughness={0.18}
-        />
-      </mesh>
+    <group position={[0, 0.02, 0]}>
+      <primitive object={bodyGroup} />
 
-      {/* Side glass is placed on the actual shell side, not on the old cabin ellipsoid. */}
-      {[-1, 1].map((side) => (
-        <mesh key={`window-${side}`} geometry={windowGeometry} position={[0, 0, side * (shellHalfWidth + 0.008)]}>
-          <meshPhysicalMaterial color="#07151b" metalness={0.36} roughness={0.18} clearcoat={0.8} side={THREE.DoubleSide} />
-        </mesh>
-      ))}
-
-      {/* Thin B-pillar keeps the cabin readable at the side camera preset. */}
-      {[-1, 1].map((side) => (
-        <mesh key={`pillar-${side}`} position={[0.17, 0.97, side * (shellHalfWidth + 0.014)]} rotation={[0, 0, -0.04]}>
-          <boxGeometry args={[0.045, 0.31, 0.025]} />
-          <meshStandardMaterial color="#11181d" metalness={0.4} roughness={0.22} />
-        </mesh>
-      ))}
-
-      {/* Flush headlamps sit on the nose profile instead of floating in front of it. */}
-      {[-0.58, 0.58].map((z) => (
-        <mesh key={`headlamp-${z}`} position={[-2.30, 0.39, z]} rotation={[0, 0, -0.12]}>
-          <boxGeometry args={[0.14, 0.055, 0.20]} />
-          <meshStandardMaterial color="#fff0c7" emissive="#ffb766" emissiveIntensity={0.7} roughness={0.18} />
-        </mesh>
-      ))}
-
-      {/* Spoiler */}
       <group position={[g.spoiler.center.x, g.spoiler.center.y, g.spoiler.center.z]} rotation={[0, 0, spoilerRotation]}>
-        <mesh geometry={spoilerGeometry} castShadow>
-          <meshPhysicalMaterial
-            color="#171e22"
-            metalness={0.82}
-            roughness={0.16}
-            clearcoat={0.8}
-            clearcoatRoughness={0.14}
-          />
-        </mesh>
-        {/* Supports positioned relative to spoiler center */}
-        <mesh geometry={supportGeometry} position={[
-          g.spoiler.supports.left.center.x - g.spoiler.center.x,
-          g.spoiler.supports.left.center.y - g.spoiler.center.y,
-          g.spoiler.supports.left.center.z - g.spoiler.center.z
-        ]}>
-          <meshStandardMaterial color="#13191d" metalness={0.74} roughness={0.2} />
-        </mesh>
-        <mesh geometry={supportGeometry} position={[
-          g.spoiler.supports.right.center.x - g.spoiler.center.x,
-          g.spoiler.supports.right.center.y - g.spoiler.center.y,
-          g.spoiler.supports.right.center.z - g.spoiler.center.z
-        ]}>
-          <meshStandardMaterial color="#13191d" metalness={0.74} roughness={0.2} />
-        </mesh>
+        <primitive object={spoilerGroup} />
       </group>
 
-      {/* Wheels - parent group handles vertical position, Wheel/Hubcap use local coords */}
+      <mesh geometry={new THREE.BoxGeometry(0.12, 0.05, 0.18)} material={lightMaterial} position={[-2.35, 0.42, 0.65]} rotation={[0, 0, -0.1]} />
+      <mesh geometry={new THREE.BoxGeometry(0.12, 0.05, 0.18)} material={lightMaterial} position={[-2.35, 0.42, -0.65]} rotation={[0, 0, 0.1]} />
+
+      <mesh geometry={new THREE.BoxGeometry(0.08, 0.12, g.width * 0.7)} material={taillightMaterial} position={[g.tailX, 0.65, 0]} rotation={[0, 0, 0.08]} />
+
+      <mesh geometry={new THREE.BoxGeometry(0.45, 0.04, g.width * 0.9)} material={darkTrimMaterial} position={[g.noseTipX + 0.15, 0.1, 0]} rotation={[0, 0, -0.02]} />
+      <mesh geometry={new THREE.BoxGeometry(0.4, 0.1, g.width * 0.75)} material={darkTrimMaterial} position={[g.tailX - 0.15, 0.14, 0]} rotation={[0, 0, 0.08]} />
+      <mesh geometry={new THREE.BoxGeometry(g.length * 0.55, 0.04, 0.05)} material={darkTrimMaterial} position={[-0.3, 0.22, g.width * 0.48]} rotation={[0, 0, 0.05]} />
+      <mesh geometry={new THREE.BoxGeometry(g.length * 0.55, 0.04, 0.05)} material={darkTrimMaterial} position={[-0.3, 0.22, -g.width * 0.48]} rotation={[0, 0, -0.05]} />
+
+      <mesh geometry={new THREE.CylinderGeometry(0.06, 0.06, 0.12, 16)} material={exhaustMaterial} position={[g.tailX, 0.24, 0.4]} rotation={[0, 0, -0.02]} />
+      <mesh geometry={new THREE.CylinderGeometry(0.06, 0.06, 0.12, 16)} material={exhaustMaterial} position={[g.tailX, 0.24, -0.4]} rotation={[0, 0, 0.02]} />
+
       {[-w.trackHalfWidth, w.trackHalfWidth].map((z) => (
         <group key={`wheel-front-${z}`} position={[w.frontAxleX, w.centerY, z]}>
-          <Wheel radius={w.radius} width={w.width} />
-          <Hubcap radius={w.radius} offsetZ={w.width * 0.58} />
-          <Hubcap radius={w.radius} offsetZ={-w.width * 0.58} />
-          {z > 0 && <WheelFace radius={w.radius} hubRadius={w.hubRadius} offsetZ={w.width * 0.7} />}
+          <WheelAssembly radius={w.radius} width={w.width} />
         </group>
       ))}
       {[-w.trackHalfWidth, w.trackHalfWidth].map((z) => (
         <group key={`wheel-rear-${z}`} position={[w.rearAxleX, w.centerY, z]}>
-          <Wheel radius={w.radius} width={w.width} />
-          <Hubcap radius={w.radius} offsetZ={w.width * 0.58} />
-          <Hubcap radius={w.radius} offsetZ={-w.width * 0.58} />
-          {z > 0 && <WheelFace radius={w.radius} hubRadius={w.hubRadius} offsetZ={w.width * 0.7} />}
+          <WheelAssembly radius={w.radius} width={w.width} />
         </group>
       ))}
-
-      {/* Front splitter */}
-      <mesh position={[g.noseTipX + 0.15, 0.12, 0]} rotation={[0, 0, -0.02]}>
-        <boxGeometry args={[0.5, 0.05, g.width * 0.9]} />
-        <meshStandardMaterial color="#14191c" metalness={0.68} roughness={0.25} />
-      </mesh>
-
-      {/* Rear diffuser */}
-      <mesh position={[g.tailX - 0.15, 0.15, 0]} rotation={[0, 0, 0.08]}>
-        <boxGeometry args={[0.42, 0.12, g.width * 0.8]} />
-        <meshStandardMaterial color="#11171a" metalness={0.72} roughness={0.24} />
-      </mesh>
-
-      {/* Side skirts */}
-      {[-g.width * 0.48, g.width * 0.48].map((z) => (
-        <mesh key={`skirt-${z}`} position={[-0.2, 0.23, z]} rotation={[0, 0, 0.05]}>
-          <boxGeometry args={[g.length * 0.6, 0.05, 0.06]} />
-          <meshStandardMaterial color="#14191c" metalness={0.68} roughness={0.25} />
-        </mesh>
-      ))}
-
-      {/* Exhaust tips */}
-      <mesh position={[g.tailX, 0.26, 0.42]} rotation={[0, 0, -0.025]}>
-        <cylinderGeometry args={[0.07, 0.07, 0.13, 18]} />
-        <meshPhysicalMaterial color="#b92735" metalness={0.7} roughness={0.18} clearcoat={1} />
-      </mesh>
-      <mesh position={[g.tailX, 0.26, -0.42]} rotation={[0, 0, 0.025]}>
-        <cylinderGeometry args={[0.07, 0.07, 0.13, 18]} />
-        <meshPhysicalMaterial color="#b92735" metalness={0.7} roughness={0.18} clearcoat={1} />
-      </mesh>
-
-      {/* Taillights */}
-      <mesh position={[g.tailX, 0.68, 0]} rotation={[0, 0, 0.08]}>
-        <boxGeometry args={[0.09, 0.14, g.width * 0.7]} />
-        <meshStandardMaterial color="#d43c34" emissive="#931b18" emissiveIntensity={0.75} roughness={0.2} />
-      </mesh>
     </group>
   );
 }
